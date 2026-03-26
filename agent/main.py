@@ -2,17 +2,19 @@
 main.py — PacificaPilot agent loop.
 
 Runs every LOOP_INTERVAL_SECONDS (default 5 min):
-  1. Fetch market data (Pacifica API)
-  2. Fetch sentiment (Elfa AI)
-  3. Decide (Gemini 2.5 Flash)
-  4. Execute (Pacifica SDK)
-  5. Log (trades.json)
+  1. Fetch market data  (Pacifica testnet API)
+  2. Fetch sentiment    (Elfa AI v2)
+  3. Decide            (Gemini 2.5 Flash via google.genai)
+  4. Execute           (Pacifica SDK — dry run by default)
+  5. Log               (trades.json)
 
 Usage:
     python main.py
 
 Environment:
     Copy agent/.env.example → agent/.env and fill in your keys.
+
+FIX: Moved BASE_URL assignment before main() to avoid NameError on startup print.
 """
 
 import os
@@ -30,10 +32,12 @@ import strategy as strat
 import executor as exe
 import logger as log
 
-SYMBOLS = [s.strip() for s in os.getenv("TRADE_SYMBOLS", "BTC,ETH").split(",")]
+# ── Config ───────────────────────────────────────────────────────────────────
+BASE_URL = os.getenv("PACIFICA_BASE_URL", "https://test-api.pacifica.fi/api/v1")
+SYMBOLS  = [s.strip() for s in os.getenv("TRADE_SYMBOLS", "BTC,ETH").split(",")]
 INTERVAL = int(os.getenv("LOOP_INTERVAL_SECONDS", "300"))
-MAX_POS = float(os.getenv("MAX_POSITION_USDC", "50"))
-DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
+MAX_POS  = float(os.getenv("MAX_POSITION_USDC", "50"))
+DRY_RUN  = os.getenv("DRY_RUN", "true").lower() == "true"
 
 
 def run_cycle():
@@ -54,12 +58,14 @@ def run_cycle():
             print(f"[{symbol}] Fetching Elfa AI sentiment...")
             sentiment_data = snt.get_token_sentiment(symbol)
             print(f"  Sentiment: {sentiment_data['sentiment_score']:+.2f}  "
-                  f"Mentions: {sentiment_data['mention_count']}")
+                  f"Mentions: {sentiment_data['mention_count']}  "
+                  f"Trending: {sentiment_data['trending_score']:.0f}")
 
             # 3. Decide
             print(f"[{symbol}] Asking Gemini for decision...")
             decision = strat.decide(market_data, sentiment_data)
             print(f"  Decision: {decision['action']} (confidence {decision['confidence']:.0%})")
+            print(f"  Reasoning: {decision['reasoning']}")
 
             # 4. Execute
             order_result = None
@@ -94,8 +100,6 @@ def main():
         time.sleep(INTERVAL)
         run_cycle()
 
-
-BASE_URL = os.getenv("PACIFICA_BASE_URL", "https://test-api.pacifica.fi/api/v1")
 
 if __name__ == "__main__":
     main()

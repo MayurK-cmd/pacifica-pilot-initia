@@ -4,16 +4,16 @@ strategy.py — Uses Gemini 2.5 Flash to decide long / short / hold
 
 Returns a structured decision dict + a plain-English explanation
 suitable for display in the dashboard.
+
+FIX: Migrated from deprecated `google.generativeai` to `google.genai`.
 """
 
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 SYSTEM_PROMPT = """
 You are PacificaPilot — an autonomous trading agent for Pacifica perpetuals markets.
@@ -75,16 +75,23 @@ What is your trading decision?
         return _fallback_rule_based(market, sentiment)
 
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction=SYSTEM_PROMPT,
+        client = genai.Client(api_key=GEMINI_API_KEY)
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.3,
+            ),
         )
-        response = model.generate_content(user_message)
+
         text = response.text.strip()
 
         # Strip markdown code fences if present
         if text.startswith("```"):
-            text = text.split("```")[1]
+            parts = text.split("```")
+            text = parts[1] if len(parts) > 1 else text
             if text.startswith("json"):
                 text = text[4:]
         text = text.strip()
