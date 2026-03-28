@@ -53,6 +53,8 @@ export default function Dashboard({ wallet }) {
       setStatus(s);
     } catch (e) {
       console.error(e);
+      // Ensure status is set to null on error so UI can reflect unknown state
+      setStatus(null);
     } finally {
       setLoading(false);
     }
@@ -61,9 +63,11 @@ export default function Dashboard({ wallet }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const id = setInterval(load, 30_000); return () => clearInterval(id); }, [load]);
 
-  const alive = status?.running && status?.lastCycleAt
-    ? Date.now() - new Date(status.lastCycleAt).getTime() < 10*60*1000
-    : false;
+  // Determine agent state more robustly
+  const isRunning =
+    status?.running === true &&
+    status?.lastCycleAt &&
+    Date.now() - new Date(status.lastCycleAt).getTime() < 10 * 60 * 1000;
 
   const filterSymbols = ["", ...(wallet?.suggestedSymbols || []), "BTC","ETH","SOL","ARB"].filter((v,i,a) => a.indexOf(v)===i);
 
@@ -71,11 +75,24 @@ export default function Dashboard({ wallet }) {
     <div>
       {/* Agent status bar */}
       <div style={{ display:"flex", alignItems:"center", gap:"1rem", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"6px", background:"#0f172a", border:"1px solid #1e293b", borderRadius:"8px", padding:"0.4rem 0.9rem", fontSize:"12px" }}>
-          <span style={{ width:"8px", height:"8px", borderRadius:"50%", background: alive ? "#22c55e":"#ef4444", display:"inline-block" }} />
-          <span style={{ color: alive ? "#22c55e":"#ef4444" }}>{alive ? "AGENT RUNNING":"AGENT OFFLINE"}</span>
-          {status?.lastCycleAt && <span style={{ color:"#475569", marginLeft:"4px" }}>· last {new Date(status.lastCycleAt).toLocaleTimeString("en-IN")}</span>}
-        </div>
+        {status === null ? (
+          <div style={{ display:"flex", alignItems:"center", gap:"6px", background:"#0f172a", border:"1px solid #1e293b", borderRadius:"8px", padding:"0.4rem 0.9rem", fontSize:"12px" }}>
+            <span style={{ width:"8px", height:"8px", borderRadius:"50%", background:"#f59e0b", display:"inline-block" }} />
+            <span style={{ color:"#f59e0b" }}>AGENT STATUS UNKNOWN</span>
+          </div>
+        ) : isRunning ? (
+          <div style={{ display:"flex", alignItems:"center", gap:"6px", background:"#0f172a", border:"1px solid #1e293b", borderRadius:"8px", padding:"0.4rem 0.9rem", fontSize:"12px" }}>
+            <span style={{ width:"8px", height:"8px", borderRadius:"50%", background:"#22c55e", display:"inline-block" }} />
+            <span style={{ color:"#22c55e" }}>AGENT RUNNING</span>
+            {status.lastCycleAt && <span style={{ color:"#475569", marginLeft:"4px" }}>· last {new Date(status.lastCycleAt).toLocaleTimeString("en-IN")}</span>}
+          </div>
+        ) : (
+          <div style={{ display:"flex", alignItems:"center", gap:"6px", background:"#0f172a", border:"1px solid #1e293b", borderRadius:"8px", padding:"0.4rem 0.9rem", fontSize:"12px" }}>
+            <span style={{ width:"8px", height:"8px", borderRadius:"50%", background:"#ef4444", display:"inline-block" }} />
+            <span style={{ color:"#ef4444" }}>AGENT OFFLINE</span>
+            {status.lastCycleAt && <span style={{ color:"#475569", marginLeft:"4px" }}>· last {new Date(status.lastCycleAt).toLocaleTimeString("en-IN")}</span>}
+          </div>
+        )}
         {status?.cyclesCompleted > 0 && <span style={{ fontSize:"12px", color:"#475569" }}>{status.cyclesCompleted} cycles</span>}
         <button onClick={load} style={{ marginLeft:"auto", background:"#1e293b", border:"none", color:"#94a3b8", padding:"0.3rem 0.75rem", borderRadius:"6px", cursor:"pointer", fontSize:"12px", fontFamily:"monospace" }}>↻ refresh</button>
       </div>
