@@ -15,6 +15,46 @@ from google.genai import types
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+
+def _response_text(response) -> str:
+    """Extract text from google.genai generate_content response (SDK versions vary)."""
+    t = getattr(response, "text", None)
+    if t:
+        return t.strip()
+    cand = getattr(response, "candidates", None) or []
+    if cand:
+        parts = getattr(cand[0].content, "parts", None) or []
+        if parts and getattr(parts[0], "text", None):
+            return parts[0].text.strip()
+    return ""
+
+
+def _normalize_decision(raw: dict, market: dict) -> dict:
+    action = str(raw.get("action", "HOLD")).upper()
+    if action not in ("LONG", "SHORT", "HOLD"):
+        action = "HOLD"
+    try:
+        conf = float(raw.get("confidence", 0.5))
+    except (TypeError, ValueError):
+        conf = 0.5
+    conf = max(0.0, min(1.0, conf))
+    size = raw.get("size_pct", 0.5)
+    try:
+        size = float(size)
+    except (TypeError, ValueError):
+        size = 0.5
+    if size not in (0.25, 0.5, 0.75, 1.0):
+        size = min((0.25, 0.5, 0.75, 1.0), key=lambda x: abs(x - size))
+    reasoning = str(raw.get("reasoning", "No reasoning provided."))
+    return {
+        "action": action,
+        "confidence": conf,
+        "reasoning": reasoning,
+        "size_pct": size,
+        "symbol": market["symbol"],
+        "mark_price": market["mark_price"],
+    }
+
 SYSTEM_PROMPT = """
 You are PacificaPilot — an autonomous trading agent for Pacifica perpetuals markets.
 You receive market data + social sentiment and must decide: LONG, SHORT, or HOLD.
@@ -54,12 +94,15 @@ def decide(market: dict, sentiment: dict) -> dict:
         "mark_price": float,
     }
     """
+    rsi = market.get("rsi_14")
+    rsi_line = f"{rsi:.2f}" if rsi is not None else "N/A (not enough candles)"
+
     user_message = f"""
 Market data for {market['symbol']}:
 - Mark price: {market['mark_price']}
 - Index price: {market['index_price']}
 - 24h change: {market['change_24h']}%
-- RSI (14, 5m): {market['rsi_14']}
+- RSI (14, 5m): {rsi_line}
 - Funding rate: {market['funding_rate']} (positive = longs pay shorts)
 
 Social sentiment (Elfa AI):
@@ -86,7 +129,9 @@ What is your trading decision?
             ),
         )
 
-        text = response.text.strip()
+        text = _response_text(response)
+        if not text:
+            raise ValueError("Empty model response")
 
         # Strip markdown code fences if present
         if text.startswith("```"):
@@ -97,9 +142,7 @@ What is your trading decision?
         text = text.strip()
 
         decision = json.loads(text)
-        decision["symbol"] = market["symbol"]
-        decision["mark_price"] = market["mark_price"]
-        return decision
+        return _normalize_decision(decision, market)
 
     except Exception as e:
         print(f"[Strategy] Gemini error for {market['symbol']}: {e}")

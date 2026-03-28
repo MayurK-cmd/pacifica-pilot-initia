@@ -23,6 +23,7 @@ from solders.keypair import Keypair
 BASE_URL = os.getenv("PACIFICA_BASE_URL", "https://test-api.pacifica.fi/api/v1")
 PRIVATE_KEY = os.getenv("PACIFICA_PRIVATE_KEY", "")
 MAX_POSITION_USDC = float(os.getenv("MAX_POSITION_USDC", "50"))
+ORDER_SLIPPAGE_PERCENT = os.getenv("ORDER_SLIPPAGE_PERCENT", "0.5")
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 
 _keypair = None
@@ -33,7 +34,11 @@ def _get_keypair() -> Keypair:
     if _keypair is None:
         if not PRIVATE_KEY:
             raise ValueError("PACIFICA_PRIVATE_KEY is not set in environment.")
-        _keypair = Keypair.from_bytes(base58.b58decode(PRIVATE_KEY))
+        raw = PRIVATE_KEY.strip()
+        try:
+            _keypair = Keypair.from_base58_string(raw)
+        except Exception:
+            _keypair = Keypair.from_bytes(base58.b58decode(raw))
     return _keypair
 
 
@@ -82,7 +87,11 @@ def _post(path: str, operation_type: str, data: dict) -> dict:
     header, _ = _sign_payload(operation_type, data)
     body = {**header, **data}
     url = f"{BASE_URL}{path}"
-    resp = requests.post(url, json=body, timeout=10)
+    headers = {"Content-Type": "application/json"}
+    api_key = os.getenv("PACIFICA_API_KEY") or os.getenv("PF_API_KEY", "")
+    if api_key:
+        headers["PF-API-KEY"] = api_key
+    resp = requests.post(url, json=body, headers=headers, timeout=15)
     resp.raise_for_status()
     return resp.json()
 
@@ -98,7 +107,8 @@ def get_account_info() -> dict:
 
 def place_market_order(symbol: str, side: str, usdc_size: float) -> dict:
     """
-    Place a market order.
+    Place a market order (POST /orders/create_market, type create_market_order).
+
     side: "bid" (long) or "ask" (short)
     usdc_size: notional value in USDC
 
@@ -111,7 +121,7 @@ def place_market_order(symbol: str, side: str, usdc_size: float) -> dict:
         "symbol": symbol,
         "side": side,
         "amount": str(round(capped_size, 4)),
-        "tif": "IOC",           # Immediate-or-cancel = market-like behavior
+        "slippage_percent": str(ORDER_SLIPPAGE_PERCENT),
         "reduce_only": False,
         "client_order_id": client_order_id,
     }
@@ -127,7 +137,7 @@ def place_market_order(symbol: str, side: str, usdc_size: float) -> dict:
             "status": "simulated",
         }
 
-    return _post("/orders/create", "create_order", order_data)
+    return _post("/orders/create_market", "create_market_order", order_data)
 
 
 def close_position(symbol: str, side: str, amount: str) -> dict:
@@ -139,7 +149,7 @@ def close_position(symbol: str, side: str, amount: str) -> dict:
         "symbol": symbol,
         "side": side,
         "amount": amount,
-        "tif": "IOC",
+        "slippage_percent": str(ORDER_SLIPPAGE_PERCENT),
         "reduce_only": True,
         "client_order_id": str(uuid.uuid4()),
     }
@@ -148,4 +158,4 @@ def close_position(symbol: str, side: str, amount: str) -> dict:
         print(f"[DRY RUN] Would close position: {order_data}")
         return {"dry_run": True, "status": "simulated", **order_data}
 
-    return _post("/orders/create", "create_order", order_data)
+    return _post("/orders/create_market", "create_market_order", order_data)

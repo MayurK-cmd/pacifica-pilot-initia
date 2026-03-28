@@ -82,14 +82,31 @@ def get_token_sentiment(symbol: str) -> dict:
         if mentions:
             scores = []
             for m in mentions:
-                likes   = float(m.get("like_count",   0) or 0)
-                reposts = float(m.get("repost_count",  0) or 0)
-                views   = float(m.get("view_count",    1) or 1)
-                # engagement ratio; 0.01 = very high engagement ceiling
-                ratio      = (likes + reposts * 2) / max(views, 1)
-                normalised = min(ratio / 0.01, 1.0)
+                likes    = float(m.get("like_count",    0) or 0)
+                reposts  = float(m.get("repost_count",  0) or 0)
+                replies  = float(m.get("reply_count",   0) or 0)
+                views    = float(m.get("view_count",    1) or 1)
+                
+                # Raw engagement score
+                raw_engagement = likes + reposts * 2 + replies
+                
+                # Use log scale to avoid crushing by huge view counts
+                # A post with 100 likes / 10k views = good engagement
+                import math
+                if raw_engagement > 0:
+                    log_eng  = math.log1p(raw_engagement)          # log(1+x)
+                    log_view = math.log1p(max(views, 1))
+                    ratio    = log_eng / max(log_view, 1)
+                    # Normalize: ratio ~0.3-0.7 is typical for quality posts
+                    normalised = min(ratio / 0.5, 1.0)
+                else:
+                    normalised = 0.0
                 scores.append(normalised)
-            sentiment_score = round(sum(scores) / len(scores), 4)
+
+            raw_sent = sum(scores) / len(scores)
+            # Scale to -1..+1 range: 0 = no engagement, 1 = very high
+            # We treat high engagement as bullish signal
+            sentiment_score = round(min(raw_sent * 2 - 0.5, 1.0), 4)
             sentiment_score = max(-1.0, min(1.0, sentiment_score))
     except Exception as e:
         print(f"[Elfa] Warning: could not fetch top-mentions for {symbol}: {e}")
@@ -98,26 +115,45 @@ def get_token_sentiment(symbol: str) -> dict:
     try:
         raw    = _elfa_get("/v2/aggregations/trending-tokens", params={
             "timeWindow": "24h",
-            "pageSize":   50,
+            "pageSize":   100,  # expanded from 50 — BTC/ETH may be lower ranked
         })
-        tokens = _unwrap(raw)   # always a list now — no more 'str has no .get'
+        tokens = _unwrap(raw)
 
+        found = False
         for rank_0, token_item in enumerate(tokens):
-            # token_item shape: {"token": {"symbol": "BTC", ...}, "count": N, ...}
-            # or sometimes flat: {"symbol": "BTC", "mentionCount": N, ...}
             if not isinstance(token_item, dict):
                 continue
 
-            token_obj   = token_item.get("token", token_item)
-            token_sym   = str(token_obj.get("symbol", "")).upper()
+            token_obj = token_item.get("token", token_item)
+            token_sym = str(token_obj.get("symbol", "")).upper()
+
+            # Also check ticker field some API versions use
+            if not token_sym:
+                token_sym = str(token_item.get("ticker", "")).upper().lstrip("$")
 
             if token_sym == symbol.upper():
                 rank           = rank_0 + 1
-                trending_score = round(max(0.0, 100 - (rank - 1) * 2), 1)
+                trending_score = round(max(0.0, 100 - (rank - 1) * 1.0), 1)  # 1pt per rank
                 if mention_count == 0:
-                    mention_count = int(token_item.get("count", 0) or
-                                        token_item.get("mentionCount", 0) or 0)
+                    mention_count = int(
+                        token_item.get("count", 0) or
+                        token_item.get("mentionCount", 0) or
+                        token_item.get("mention_count", 0) or 0
+                    )
+                found = True
                 break
+
+        if not found:
+            # BTC/ETH are always highly traded — if not in trending list,
+            # assign a baseline score based on mention_count
+            if mention_count >= 15:
+                trending_score = 40.0
+            elif mention_count >= 5:
+                trending_score = 20.0
+            else:
+                trending_score = 5.0
+            print(f"[Elfa] {symbol} not in top-100 trending — using mention-based score: {trending_score}")
+
     except Exception as e:
         print(f"[Elfa] Warning: could not fetch trending-tokens for {symbol}: {e}")
 
