@@ -60,7 +60,7 @@ function ConnectScreen({ wallet }) {
           ◆ PACIFICAPILOT
         </div>
         <div style={{ fontSize:"14px", color:"#475569", marginBottom:"2.5rem", lineHeight:1.7 }}>
-          Autonomous AI trading agent for Pacifica perps.<br/>Connect your wallet to get started.
+          Hey! Let's trade with AI on Pacifica.<br/>Connect your wallet to get started.
         </div>
         {wallet.error && (
           <div style={{ color:"#ef4444", fontSize:"12px", marginBottom:"1rem", padding:"0.75rem", background:"#1a0a0a", borderRadius:"8px", border:"1px solid #7f1d1d" }}>
