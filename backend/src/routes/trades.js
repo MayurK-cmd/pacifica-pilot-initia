@@ -1,99 +1,83 @@
-const express = require("express");
-const router = express.Router();
-const Trade = require("../models/Trade");
+const express  = require("express");
+const router   = express.Router();
+const Trade    = require("../models/Trade");
+const { requireWallet, optionalWallet } = require("../middleware/requireWallet");
 
-// GET /api/trades?symbol=BTC&limit=50&action=SHORT
-router.get("/", async (req, res) => {
+// GET /api/trades - Get user's trades
+router.get("/", optionalWallet, async (req, res) => {
   try {
-    const { symbol, limit = 50, action, page = 1 } = req.query;
-    const filter = {};
+    const { symbol, limit = 100, action, page = 1 } = req.query;
+    const filter = { userId: req.walletAddress || "anonymous" };
+
     if (symbol) filter.symbol = symbol.toUpperCase();
     if (action) filter.action = action.toUpperCase();
 
-    const trades = await Trade.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .lean();
-
-    const total = await Trade.countDocuments(filter);
-
-    res.json({ trades, total, page: parseInt(page), limit: parseInt(limit) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const [trades, total] = await Promise.all([
+      Trade.find(filter).sort({ createdAt: -1 }).limit(+limit).skip((+page-1) * +limit).lean(),
+      Trade.countDocuments(filter),
+    ]);
+    res.json({ trades, total, page: +page, limit: +limit });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// GET /api/trades/pnl — summary stats
-router.get("/pnl", async (req, res) => {
+// GET /api/trades/pnl - Get user's PnL stats
+router.get("/pnl", optionalWallet, async (req, res) => {
   try {
     const { symbol } = req.query;
-    const filter = symbol ? { symbol: symbol.toUpperCase() } : {};
+    const filter = { userId: req.walletAddress || "anonymous" };
+    if (symbol) filter.symbol = symbol.toUpperCase();
 
-    const [total, longs, shorts, holds, withPnl] = await Promise.all([
+    const since24h = new Date(Date.now() - 86400000);
+
+    const [total, longs, shorts, holds, exits, trades24h, withPnl, avgConf] = await Promise.all([
       Trade.countDocuments(filter),
       Trade.countDocuments({ ...filter, action: "LONG" }),
       Trade.countDocuments({ ...filter, action: "SHORT" }),
       Trade.countDocuments({ ...filter, action: "HOLD" }),
+      Trade.countDocuments({ ...filter, action: "EXIT" }),
+      Trade.countDocuments({ ...filter, createdAt: { $gte: since24h } }),
       Trade.find({ ...filter, pnl_usdc: { $ne: null } }).lean(),
+      Trade.aggregate([{ $match: filter }, { $group: { _id: null, avg: { $avg: "$confidence" } } }]),
     ]);
 
-    const totalPnl = withPnl.reduce((sum, t) => sum + (t.pnl_usdc || 0), 0);
-    const avgConfidence = await Trade.aggregate([
-      { $match: filter },
-      { $group: { _id: null, avg: { $avg: "$confidence" } } },
-    ]);
-
-    // Last 24h activity
-    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const trades24h = await Trade.countDocuments({
-      ...filter,
-      createdAt: { $gte: since24h },
-    });
-
+    const totalPnl = withPnl.reduce((s, t) => s + (t.pnl_usdc || 0), 0);
     res.json({
-      total,
-      longs,
-      shorts,
-      holds,
+      total, longs, shorts, holds, exits, trades24h,
       totalPnl: parseFloat(totalPnl.toFixed(4)),
-      avgConfidence: avgConfidence[0]?.avg
-        ? parseFloat(avgConfidence[0].avg.toFixed(3))
-        : 0,
-      trades24h,
+      avgConfidence: avgConf[0]?.avg ? parseFloat(avgConf[0].avg.toFixed(3)) : 0,
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// GET /api/trades/latest — just the most recent trade per symbol
-router.get("/latest", async (req, res) => {
+// GET /api/trades/latest - Get latest trade per symbol for user
+router.get("/latest", optionalWallet, async (req, res) => {
   try {
-    const symbols = req.query.symbols
-      ? req.query.symbols.split(",").map((s) => s.trim().toUpperCase())
-      : await Trade.distinct("symbol");
+    const filter = { userId: req.walletAddress || "anonymous" };
+    const syms = req.query.symbols
+      ? req.query.symbols.split(",").map(s => s.trim().toUpperCase())
+      : await Trade.distinct("symbol", filter);
 
     const latest = await Promise.all(
-      symbols.map((sym) =>
-        Trade.findOne({ symbol: sym }).sort({ createdAt: -1 }).lean()
-      )
+      syms.map(s => Trade.findOne({ ...filter, symbol: s }).sort({ createdAt: -1 }).lean())
     );
-
     res.json(latest.filter(Boolean));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/trades — called by Python agent to log a decision
-router.post("/", async (req, res) => {
+// POST /api/trades - Create a new trade (agent writes here)
+router.post("/", requireWallet, async (req, res) => {
   try {
-    const trade = new Trade(req.body);
-    await trade.save();
+    const tradeData = { ...req.body, userId: req.walletAddress };
+    const trade = await Trade.create(tradeData);
     res.status(201).json(trade);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

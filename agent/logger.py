@@ -1,28 +1,33 @@
 """
-logger.py — Posts every agent decision to the Express backend (MongoDB).
-Also sends heartbeat so the dashboard knows the agent is alive.
-Falls back to local trades.json if backend is unreachable.
+logger.py — Posts decisions + PnL to Express backend. Falls back to local file.
 """
 
-import json
-import os
-import time
+import json, os, sys, requests
 from datetime import datetime, timezone
-import requests
+
+# Ensure UTF-8 output on Windows
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:3001")
-DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
+AGENT_API_KEY = os.getenv("AGENT_API_SECRET", "")   # must match AGENT_API_SECRET in backend
+DRY_RUN     = os.getenv("DRY_RUN", "true").lower() == "true"
+LOG_FILE    = os.path.join(os.path.dirname(__file__), "..", "trades.json")
 
-# Fallback file if backend is down
-LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "trades.json")
+_cycles = 0
 
-_cycles_completed = 0
+
+def _auth_headers() -> dict:
+    h = {"Content-Type": "application/json"}
+    if AGENT_API_KEY:
+        h["x-agent-key"] = AGENT_API_KEY
+    return h
 
 
 def _load_fallback() -> list:
     if os.path.exists(LOG_FILE):
         try:
-            with open(LOG_FILE, "r") as f:
+            with open(LOG_FILE) as f:
                 return json.load(f)
         except Exception:
             pass
@@ -32,97 +37,80 @@ def _load_fallback() -> list:
 def _save_fallback(trades: list):
     try:
         with open(LOG_FILE, "w") as f:
-            json.dump(trades, f, indent=2)
+            json.dump(trades[:500], f, indent=2)
     except Exception as e:
-        print(f"[Logger] Fallback file write failed: {e}")
+        print(f"[Logger] File fallback failed: {e}")
 
 
-def log_decision(decision: dict, market: dict, sentiment: dict, order_result: dict = None):
-    """
-    Posts a complete agent cycle to the backend API.
-    Falls back to local JSON if backend is unreachable.
-    """
+def log_decision(decision: dict, market: dict, sentiment: dict,
+                 order_result: dict = None, pnl_usdc: float = None):
     payload = {
-        "symbol": decision["symbol"],
-        "action": decision["action"],
-        "confidence": decision["confidence"],
-        "reasoning": decision["reasoning"],
-        "size_pct": decision.get("size_pct", 0),
-        "mark_price": decision.get("mark_price", market.get("mark_price")),
-        "rsi_14": market.get("rsi_14"),
-        "funding_rate": market.get("funding_rate"),
-        "change_24h": market.get("change_24h"),
+        "symbol":          decision["symbol"],
+        "action":          decision["action"],
+        "confidence":      decision["confidence"],
+        "reasoning":       decision["reasoning"],
+        "size_pct":        decision.get("size_pct", 0),
+        "mark_price":      decision.get("mark_price", market.get("mark_price")),
+        "rsi_14":          market.get("rsi_14"),
+        "rsi_1h":          market.get("rsi_1h"),
+        "funding_rate":    market.get("funding_rate"),
+        "change_24h":      market.get("change_24h"),
         "sentiment_score": sentiment.get("sentiment_score"),
-        "mention_count": sentiment.get("mention_count"),
-        "trending_score": sentiment.get("trending_score"),
-        "order": order_result,
-        "dry_run": DRY_RUN,
-        "pnl_usdc": None,
+        "mention_count":   sentiment.get("mention_count"),
+        "trending_score":  sentiment.get("trending_score"),
+        "order":           order_result,
+        "dry_run":         DRY_RUN,
+        "pnl_usdc":        pnl_usdc,
+        "open_position":   market.get("open_position"),
+        "unrealized_pnl":  market.get("unrealized_pnl"),
     }
 
-    # Try posting to backend
     posted = False
     try:
-        resp = requests.post(
+        r = requests.post(
             f"{BACKEND_URL}/api/trades",
             json=payload,
+            headers=_auth_headers(),
             timeout=5,
         )
-        resp.raise_for_status()
+        r.raise_for_status()
         posted = True
     except Exception as e:
-        print(f"[Logger] Backend unreachable, falling back to file: {e}")
+        print(f"[Logger] Backend unreachable, using file fallback: {e}")
         trades = _load_fallback()
-        entry = {**payload, "timestamp": datetime.now(timezone.utc).isoformat()}
-        trades.insert(0, entry)
-        _save_fallback(trades[:500])
+        trades.insert(0, {**payload, "timestamp": datetime.now(timezone.utc).isoformat()})
+        _save_fallback(trades)
 
-    # Pretty stdout log
-    action_tag = {"LONG": "[LONG ]", "SHORT": "[SHORT]", "HOLD": "[HOLD ]"}.get(
-        decision["action"], "[?]"
-    )
-    rsi_str = f"{market.get('rsi_14'):.2f}" if market.get("rsi_14") is not None else "N/A"
+    ac  = {"LONG":"[LONG ]","SHORT":"[SHORT]","HOLD":"[HOLD ]","EXIT":"[EXIT ]"}.get(decision["action"], "[?]")
+    rsi = f"{market.get('rsi_14'):.2f}" if market.get("rsi_14") is not None else "N/A"
+    pnl_s = f"PnL: ${pnl_usdc:.4f}" if pnl_usdc is not None else ""
     print(
-        f"\n{action_tag}  [{datetime.now(timezone.utc).strftime('%H:%M:%S')}] "
-        f"{decision['symbol']} -> {decision['action']} "
-        f"(confidence {decision['confidence']:.0%})\n"
-        f"   Price: ${decision.get('mark_price', 0):,.2f}  |  "
-        f"RSI: {rsi_str}  |  "
-        f"Sentiment: {sentiment.get('sentiment_score', 0):+.2f}  |  "
-        f"{'✓ posted' if posted else '⚠ fallback'}\n"
-        f"   Reason: {decision['reasoning']}\n"
+        f"\n{ac}  {decision['symbol']} @ ${decision.get('mark_price', 0):,.2f}  "
+        f"RSI: {rsi}  Eng: {sentiment.get('sentiment_score', 0):.2f}  "
+        f"{pnl_s}  {'✓' if posted else '⚠ fallback'}\n"
+        f"  {decision['reasoning'][:120]}\n"
     )
-
     return payload
 
 
 def send_heartbeat(symbol: str = None, error: str = None):
-    """Called each cycle so dashboard knows agent is alive."""
-    global _cycles_completed
-    _cycles_completed += 1
+    global _cycles
+    _cycles += 1
     try:
         requests.post(
             f"{BACKEND_URL}/api/agent/heartbeat",
-            json={
-                "symbol": symbol,
-                "cyclesCompleted": _cycles_completed,
-                "error": error,
-            },
+            json={"symbol": symbol, "cyclesCompleted": _cycles, "error": error},
+            headers=_auth_headers(),
             timeout=3,
         )
     except Exception:
-        pass  # Heartbeat failure is non-critical
+        pass
 
 
 def get_recent_trades(limit: int = 50) -> list:
-    """Fetch recent trades from backend (used by any local tooling)."""
     try:
-        resp = requests.get(
-            f"{BACKEND_URL}/api/trades",
-            params={"limit": limit},
-            timeout=5,
-        )
-        resp.raise_for_status()
-        return resp.json().get("trades", [])
+        r = requests.get(f"{BACKEND_URL}/api/trades", params={"limit": limit}, timeout=5)
+        r.raise_for_status()
+        return r.json().get("trades", [])
     except Exception:
         return _load_fallback()[:limit]
