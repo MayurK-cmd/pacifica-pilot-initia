@@ -43,41 +43,88 @@ export default function AgentStatusBar() {
 
   const isRunning = status?.running ?? false;
   const dotColor = !enabled ? "#3f3f46" : isRunning ? PACIFICA_BLUE : "#f59e0b";
+  const statusText = !enabled ? "OFFLINE" : isRunning ? "ACTIVE" : "STANDBY";
 
   return (
-    <div className="flex items-center justify-between px-8 py-3 border-b border-[#1a2b3b] bg-black/30 font-mono text-[11px] uppercase tracking-wider">
-      <div className="flex items-center gap-5">
-        <div className="flex items-center gap-3">
-          <motion.span 
-            animate={isRunning ? { opacity: [1, 0.4, 1], scale: [1, 1.2, 1] } : {}}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ backgroundColor: dotColor, boxShadow: isRunning ? `0 0 12px ${PACIFICA_BLUE}` : 'none' }}
+    <div className="flex items-center justify-between px-8 py-3 border-b border-[#1a2b3b] bg-gradient-to-r from-[#00d1ff05] to-transparent font-mono text-[10px] uppercase tracking-wider">
+      <div className="flex items-center gap-6">
+        {/* Status Indicator */}
+        <div className="flex items-center gap-3 px-4 py-2 bg-zinc-950/50 border border-zinc-900 rounded-sm">
+          <motion.span
+            animate={isRunning ? { opacity: [1, 0.3, 1], scale: [1, 1.3, 1] } : { opacity: 0.4 }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            className="w-2 h-2 rounded-full shadow-[0_0_10px_currentColor]"
+            style={{ color: dotColor, backgroundColor: dotColor }}
           />
-          <span className="text-white font-bold">
-            Agent: {!enabled ? "Offline" : isRunning ? `Active — ${status?.lastSymbol}` : "Standby"}
-          </span>
+          <span className="text-white font-black tracking-[0.2em]">{statusText}</span>
         </div>
+
+        {/* Last Symbol */}
+        {isRunning && status?.lastSymbol && (
+          <div className="flex items-center gap-2 text-zinc-500">
+            <span className="text-[9px] uppercase tracking-widest">Monitoring:</span>
+            <span style={{ color: PACIFICA_BLUE }} className="font-black">{status.lastSymbol}</span>
+          </div>
+        )}
+
+        {/* Cycle Counter */}
         {isRunning && (
-          <span className="text-zinc-600 border-l border-[#1a2b3b] pl-5">
-            {status?.cyclesCompleted} cycles · last_{status?.lastCycleAt ? new Date(status.lastCycleAt).toLocaleTimeString() : "—"}
-          </span>
+          <div className="flex items-center gap-2 text-zinc-600 border-l border-zinc-800 pl-5">
+            <span className="text-[9px] uppercase tracking-widest">Cycles:</span>
+            <span className="text-zinc-400 font-mono">{status?.cyclesCompleted || 0}</span>
+          </div>
+        )}
+
+        {/* Last Activity */}
+        {status?.lastCycleAt && (
+          <div className="flex items-center gap-2 text-zinc-600 border-l border-zinc-800 pl-5">
+            <span className="text-[9px] uppercase tracking-widest">Last_Active:</span>
+            <span className="text-zinc-400 font-mono">{new Date(status.lastCycleAt).toLocaleTimeString()}</span>
+          </div>
         )}
       </div>
 
       <div className="flex items-center gap-6">
-        {error && <span className="text-red-500 font-bold">⚠ {error}</span>}
+        {/* Error Display */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-red-500 font-black flex items-center gap-2"
+          >
+            <span className="animate-pulse">⚠</span> {error}
+          </motion.div>
+        )}
+
+        {/* Toggle Control */}
         <div className="flex items-center gap-4">
-          <span className="text-zinc-500 font-black">{enabled ? "Disable" : "Enable"}_Core</span>
+          <span className="text-zinc-500 font-black tracking-[0.15em]">
+            {enabled ? "DISABLE" : "ENABLE"}_CORE
+          </span>
           <button
             onClick={toggle}
             disabled={toggling || enabled === null}
-            className={`w-12 h-6 border flex items-center px-1 transition-all ${enabled ? 'border-[#00d1ff] bg-[#00d1ff11]' : 'border-zinc-800 bg-transparent'}`}
+            className={`w-14 h-7 border flex items-center px-1 transition-all relative overflow-hidden ${
+              enabled
+                ? 'border-[#00d1ff] bg-[#00d1ff11] shadow-[0_0_20px_rgba(0,209,255,0.2)]'
+                : 'border-zinc-800 bg-zinc-950'
+            }`}
           >
-            <motion.div 
-              animate={{ x: enabled ? 24 : 0 }}
-              className={`w-4 h-4 shadow-lg ${enabled ? 'bg-[#00d1ff]' : 'bg-zinc-800'}`} 
+            <motion.div
+              animate={{ x: enabled ? 28 : 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              className={`w-5 h-5 shadow-lg relative z-10 ${
+                enabled ? 'bg-[#00d1ff]' : 'bg-zinc-700'
+              }`}
             />
+            {/* Track background glow */}
+            {enabled && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 bg-gradient-to-r from-[#00d1ff33] to-transparent"
+              />
+            )}
           </button>
         </div>
       </div>
