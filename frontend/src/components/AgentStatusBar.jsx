@@ -97,36 +97,7 @@ export default function AgentStatusBar() {
         )}
 
         {/* Toggle Control */}
-        <div className="flex items-center gap-4">
-          <span className="text-zinc-500 font-black tracking-[0.15em]">
-            {enabled ? "DISABLE" : "ENABLE"}_CORE
-          </span>
-          <button
-            onClick={toggle}
-            disabled={toggling || enabled === null}
-            className={`w-14 h-7 border flex items-center px-1 transition-all relative overflow-hidden ${
-              enabled
-                ? 'border-[#00d1ff] bg-[#00d1ff11] shadow-[0_0_20px_rgba(0,209,255,0.2)]'
-                : 'border-zinc-800 bg-zinc-950'
-            }`}
-          >
-            <motion.div
-              animate={{ x: enabled ? 28 : 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className={`w-5 h-5 shadow-lg relative z-10 ${
-                enabled ? 'bg-[#00d1ff]' : 'bg-zinc-700'
-              }`}
-            />
-            {/* Track background glow */}
-            {enabled && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute inset-0 bg-gradient-to-r from-[#00d1ff33] to-transparent"
-              />
-            )}
-          </button>
-        </div>
+        
       </div>
     </div>
   );

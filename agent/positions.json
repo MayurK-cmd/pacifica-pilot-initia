@@ -1,0 +1,12 @@
+{
+  "WIF": {
+    "side": "bid",
+    "size": 213.0,
+    "entry_price": 0.17615,
+    "unrealized_pnl": 0.0,
+    "mark_price": 0.0,
+    "trailing_high": 0.181168,
+    "trailing_low": null,
+    "entry_time": 1775140352.2853465
+  }
+}

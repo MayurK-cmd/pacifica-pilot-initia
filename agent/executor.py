@@ -32,6 +32,43 @@ _agent_keypair        = None
 
 # ── Persistent position tracking ──────────────────────────────────────────────
 
+# Add this near the top of executor.py with the other module-level vars
+_market_info_cache: dict = {}   # symbol → { lot_size, tick_size, min_order_size }
+
+def _get_market_info(symbol: str) -> dict:
+    global _market_info_cache
+    if symbol in _market_info_cache:
+        return _market_info_cache[symbol]
+    try:
+        r = requests.get(f"{BASE_URL}/info", headers=_headers(), timeout=10)
+        r.raise_for_status()
+        data = r.json().get("data", [])
+        for m in data:
+            _market_info_cache[m["symbol"]] = {
+                "lot_size":       float(m.get("lot_size", "0.0001")),
+                "tick_size":      float(m.get("tick_size", "0.01")),
+                "min_order_size": float(m.get("min_order_size", "10")),
+            }
+        return _market_info_cache.get(symbol, {"lot_size": 0.0001, "tick_size": 0.01, "min_order_size": 10})
+    except Exception as e:
+        print(f"[Executor] Could not fetch market info for {symbol}: {e}")
+        return {"lot_size": 0.0001, "tick_size": 0.01, "min_order_size": 10}
+
+
+def _usdc_to_coin_amount(usdc_size: float, mark_price: float, lot_size: float) -> str:
+    """
+    Pacifica amount field = coin quantity (not USDC).
+    $10 of WIF at $0.18 = 55.55 WIF → rounded to lot_size → "55.0"
+    """
+    if mark_price <= 0:
+        raise ValueError(f"Invalid mark price: {mark_price}")
+    raw_coins = usdc_size / mark_price
+    # Round DOWN to nearest lot_size multiple
+    snapped = int(raw_coins / lot_size) * lot_size
+    # Format without trailing noise
+    decimals = max(0, -int(f"{lot_size:e}".split("e")[1]))
+    return f"{snapped:.{decimals}f}"
+
 def _load_positions() -> dict:
     """Load positions from disk on startup so restarts don't lose open trades."""
     try:
@@ -134,6 +171,7 @@ def _headers() -> dict:
     return h
 
 
+
 def _post(path: str, op: str, data: dict, retries: int = 3) -> dict:
     body = {**_sign_payload(op, data), **data}
     for attempt in range(retries):
@@ -141,8 +179,15 @@ def _post(path: str, op: str, data: dict, retries: int = 3) -> dict:
             r = requests.post(
                 f"{BASE_URL}{path}", json=body, headers=_headers(), timeout=15
             )
+            # Print full response body on failure so we can see the real error
+            if not r.ok:
+                print(f"[Executor] Error response body: {r.text}")
             r.raise_for_status()
             return r.json()
+        except requests.exceptions.HTTPError as e:
+            wait = 2 ** attempt
+            print(f"[Executor] POST {path} attempt {attempt+1}/{retries} failed: {e}. Waiting {wait}s...")
+            time.sleep(wait)
         except Exception as e:
             wait = 2 ** attempt
             print(f"[Executor] POST {path} attempt {attempt+1}/{retries} failed: {e}. Waiting {wait}s...")
@@ -175,25 +220,28 @@ def get_account_info(wallet_address: str) -> dict:
 
 def get_open_positions(wallet_address: str) -> dict:
     """
-    Fetches live positions from Pacifica and merges with persisted state so
-    trailing high-water marks survive across multiple API calls.
+    Fetches live positions from Pacifica /positions endpoint and merges with
+    persisted state so trailing high-water marks survive across multiple API calls.
     """
     global _open_positions
     try:
-        info      = get_account_info(wallet_address)
-        positions = info.get("positions", []) or []
+        # Fetch from dedicated /positions endpoint (not nested in /account)
+        raw = _get_api("/positions", wallet_address)
+        positions = raw.get("data", []) or []
         live      = {}
         for p in positions:
             sym  = p.get("symbol", "")
-            size = float(p.get("size", 0) or 0)
-            if size != 0:
+            # Pacifica uses "amount" field, not "size"
+            amount = float(p.get("amount", 0) or 0)
+            side   = p.get("side", "")
+            if amount > 0:
                 persisted = _open_positions.get(sym, {})
                 live[sym] = {
-                    "side":           "bid" if size > 0 else "ask",
-                    "size":           abs(size),
-                    "entry_price":    float(p.get("entry_price",    0) or 0),
-                    "unrealized_pnl": float(p.get("unrealized_pnl", 0) or 0),
-                    "mark_price":     float(p.get("mark_price",     0) or 0),
+                    "side":           side,  # "bid" or "ask"
+                    "size":           amount,
+                    "entry_price":    float(p.get("entry_price", 0) or 0),
+                    "unrealized_pnl": 0.0,  # Not returned by API
+                    "mark_price":     float(p.get("mark_price", 0) or 0),
                     # Preserve trailing marks from persisted state — crucial for trailing stops
                     "trailing_high":  persisted.get("trailing_high"),
                     "trailing_low":   persisted.get("trailing_low"),
@@ -317,6 +365,7 @@ def place_market_order(
     usdc_size: float,
     max_position_usdc: float,
     available_balance: float | None = None,
+     mark_price: float | None = None,
 ) -> dict:
     """
     Dynamic balance-aware sizing:
@@ -344,19 +393,37 @@ def place_market_order(
 
     # Cap 3: minimum order guard — never silently fail
     if capped < 10.0:
-        reason = (
-            f"order size ${capped:.2f} below $10 minimum "
-            f"(available: ${available_balance:.2f})" if available_balance is not None
-            else f"order size ${capped:.2f} below $10 minimum"
-        )
+        # reason = (
+        #     f"order size ${capped:.2f} below $10 minimum "
+        #     f"(available: ${available_balance:.2f})" if available_balance is not None
+        #     else f"order size ${capped:.2f} below $10 minimum"
+        # )
         print(f"[Executor] {symbol}: {reason} — skipping")
         return {"skipped": True, "reason": "insufficient_balance", "symbol": symbol, "size_attempted": capped}
+
+    
+    info     = _get_market_info(symbol)
+    lot_size = info["lot_size"]
+
+    # Convert USDC → coin amount using mark price
+    price = mark_price or 1.0
+    try:
+        coin_amount = _usdc_to_coin_amount(capped, price, lot_size)
+    except Exception as e:
+        print(f"[Executor] Amount conversion failed for {symbol}: {e} — skipping")
+        return {"skipped": True, "reason": f"amount_conversion_failed: {e}", "symbol": symbol}
+
+    # Validate minimum coin amount translates to at least $10
+    coin_float = float(coin_amount)
+    if coin_float * price < 10.0:
+        print(f"[Executor] {symbol}: {coin_amount} coins × ${price:.4f} = ${coin_float*price:.2f} < $10 min — skipping")
+        return {"skipped": True, "reason": "below_min_order_value", "symbol": symbol}
 
     cid   = str(uuid.uuid4())
     order = {
         "symbol":           symbol,
         "side":             side,
-        "amount":           str(round(capped, 4)),
+        "amount":           coin_amount,  # Use coin quantity, not USDC
         "slippage_percent": str(ORDER_SLIPPAGE_PCT),
         "reduce_only":      False,
         "client_order_id":  cid,

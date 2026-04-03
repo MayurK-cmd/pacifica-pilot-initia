@@ -40,7 +40,7 @@ def _agent_headers() -> dict:
 def fetch_config() -> dict | None:
     try:
         r = requests.get(
-            f"{BACKEND_URL}/api/config",
+            f"{BACKEND_URL}/api/agent/config",
             headers=_agent_headers(),
             timeout=5,
         )
@@ -140,11 +140,12 @@ def process_symbol(
         # 4. Strategy decision (Gemini or fallback)
         log.push_log(f"[{symbol}] Asking Gemini...")
         decision = strat.decide(market, sentiment, account_context, max_pos)
+        # Log full reasoning without truncation
         log.push_log(
             f"  Decision: {decision['action']} "
-            f"(conf {decision['confidence']:.0%})  "
-            f"Reason: {decision['reasoning'][:100]}..."
+            f"(conf {decision['confidence']:.0%})"
         )
+        log.push_log(f"  Reason: {decision['reasoning']}")
 
         # 5. Execute
         order_result = None
@@ -173,6 +174,7 @@ def process_symbol(
                 order_result = exe.place_market_order(
                     symbol, side, usdc_size, max_pos,
                     available_balance=available,
+                    mark_price=current_price,
                 )
                 if order_result and not order_result.get("skipped"):
                     exe.record_entry(symbol, side, current_price, usdc_size)

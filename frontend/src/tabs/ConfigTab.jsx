@@ -4,9 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const PACIFICA_API = "https://test-api.pacifica.fi/api/v1";
 const PACIFICA_BLUE = "#00d1ff";
-const LOGO_DEV_API = "https://www.logo.dev/api";
+const LOGO_DEV_API = "https://img.logo.dev/crypto/";
+const LOGO_DEV_API_KEY=import.meta.env.VITE_LOGO_DEV_API_KEY;
 
-const getIcon = (sym) => `${LOGO_DEV_API}?symbol=${sym.toUpperCase()}&size=64`;
+const getIcon = (sym) =>
+  `${LOGO_DEV_API}${sym.toLowerCase()}?token=${LOGO_DEV_API_KEY}`;
+
 
 const INTERVALS = [
   { v: 60, l: "1 MIN" },
@@ -448,6 +451,7 @@ function MasterToggle({ label, desc, active, onToggle, icon = "◈", activeColor
 
 function SymbolButton({ symbol, isActive, onClick }) {
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
   const src = getIcon(symbol);
 
   return (
@@ -462,18 +466,21 @@ function SymbolButton({ symbol, isActive, onClick }) {
       }`}
     >
       <div className={`w-6 h-6 rounded-full border flex items-center justify-center p-1 ${isActive ? 'border-black' : 'border-zinc-800'}`}>
-        {!loaded && <div className="w-full h-full bg-zinc-800 rounded-full animate-pulse" />}
-        <img
-          src={src}
-          alt={symbol}
-          onLoad={() => setLoaded(true)}
-          onError={(e) => {
-            e.target.style.display = 'none';
-            e.target.parentElement.textContent = symbol[0];
-            e.target.parentElement.className += ' bg-zinc-700 text-white flex items-center justify-center font-black';
-          }}
-          className={`w-full h-full object-contain ${isActive ? 'invert' : ''} ${loaded ? 'block' : 'hidden'}`}
-        />
+        {!loaded && !error && <div className="w-full h-full bg-zinc-800 rounded-full animate-pulse" />}
+        {error ? (
+          <span className="text-white font-black text-[8px]">{symbol[0]}</span>
+        ) : (
+          <img
+            src={src}
+            alt={symbol}
+            onLoad={() => setLoaded(true)}
+            onError={() => {
+              setLoaded(true);
+              setError(true);
+            }}
+            className={`w-full h-full object-contain ${isActive ? 'invert' : ''} ${loaded && !error ? 'block' : 'hidden'}`}
+          />
+        )}
       </div>
       <span className="tracking-widest uppercase flex-1">{symbol}</span>
       {isActive && (

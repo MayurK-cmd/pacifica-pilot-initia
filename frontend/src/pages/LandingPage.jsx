@@ -102,7 +102,7 @@ export default function LandingPage() {
             <div className="w-1.5 h-1.5" style={{ backgroundColor: PACIFICA_BLUE }} />
           </motion.div>
           <span className="font-mono font-black tracking-[0.5em] text-sm uppercase" style={{ color: PACIFICA_BLUE }}>
-            PACIFICA_PILOT_V1.0
+            PACIFICA_PILOT
           </span>
         </div>
 
