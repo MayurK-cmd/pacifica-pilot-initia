@@ -15,10 +15,26 @@ if sys.platform == "win32":
 
 BACKEND_URL   = os.getenv("BACKEND_URL", "http://localhost:3001")
 AGENT_API_KEY = os.getenv("AGENT_API_SECRET", "")
+USER_ID       = os.getenv("USER_ID", "")  # Auto-fetched if empty
 DRY_RUN       = os.getenv("DRY_RUN", "true").lower() == "true"
 LOG_FILE      = os.path.join(os.path.dirname(__file__), "..", "trades.json")
 
 _cycles = 0
+
+
+def _fetch_user_id() -> str:
+    """Fetch userId from backend on first run."""
+    try:
+        r = requests.get(
+            f"{BACKEND_URL}/api/agent/user-id",
+            headers=_auth_headers(),
+            timeout=5,
+        )
+        r.raise_for_status()
+        return r.json().get("userId", "")
+    except Exception as e:
+        push_log(f"[Logger] Failed to fetch userId: {e}")
+        return ""
 
 
 def _auth_headers() -> dict:
@@ -62,7 +78,11 @@ def _save_fallback(trades: list):
 
 def log_decision(decision: dict, market: dict, sentiment: dict,
                  order_result: dict = None, pnl_usdc: float = None):
+    global USER_ID
+    if not USER_ID:
+        USER_ID = _fetch_user_id()
     payload = {
+        "userId":          USER_ID,
         "symbol":          decision["symbol"],
         "action":          decision["action"],
         "confidence":      decision["confidence"],

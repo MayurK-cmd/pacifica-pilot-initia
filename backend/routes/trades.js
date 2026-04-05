@@ -30,11 +30,8 @@ tradeSchema.index({ userId: 1, symbol: 1 });
 
 const Trade = mongoose.models.Trade || mongoose.model("Trade", tradeSchema);
 
-// All routes require auth
-router.use(requireAuth);
-
-// GET /api/trades
-router.get("/", async (req, res) => {
+// GET /api/trades - requires JWT
+router.get("/", requireAuth, async (req, res) => {
   try {
     const filter = { userId: req.user._id };
     if (req.query.symbol) filter.symbol = req.query.symbol.toUpperCase();
@@ -51,8 +48,8 @@ router.get("/", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/trades/stats
-router.get("/stats", async (req, res) => {
+// GET /api/trades/stats - requires JWT
+router.get("/stats", requireAuth, async (req, res) => {
   try {
     const uid = req.user._id;
     const [total, byAction, withPnl] = await Promise.all([
@@ -69,8 +66,8 @@ router.get("/stats", async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/trades/:id
-router.get("/:id", async (req, res) => {
+// GET /api/trades/:id - requires JWT
+router.get("/:id", requireAuth, async (req, res) => {
   try {
     const trade = await Trade.findOne({ _id: req.params.id, userId: req.user._id }).lean();
     if (!trade) return res.status(404).json({ error: "Not found" });

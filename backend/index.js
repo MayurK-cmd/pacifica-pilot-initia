@@ -100,6 +100,17 @@ app.use("/api/agent", (req, res, next) => {
   next();
 }, agentRouter);
 
+// ── GET /api/agent/user-id — agent fetches userId on startup ─────────────────
+app.get("/api/agent/user-id", requireAgentKey, async (req, res) => {
+  try {
+    const user = await User.findOne({ onboarded: true }).select("_id").lean();
+    if (!user) return res.status(404).json({ error: "No onboarded user found" });
+    res.json({ userId: user._id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Logs routes ────────────────────────────────────────────────────────────────
 // POST requires agent key, GET + SSE stream are open
 app.use("/api/logs", (req, res, next) => {
