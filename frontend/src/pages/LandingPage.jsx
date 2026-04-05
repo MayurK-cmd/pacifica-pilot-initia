@@ -263,7 +263,7 @@ export default function LandingPage() {
                 Launch_Terminal
               </button>
               <a
-                href="https://github.com/MayurK-cmd/Pacificia-Trading-Bot"
+                href=""
                 target="_blank"
                 rel="noreferrer"
                 className="px-16 py-6 font-black uppercase tracking-[0.4em] text-sm border border-[#1a2b3b] hover:border-[#00d1ff] hover:text-[#00d1ff] transition-all cursor-pointer"
@@ -328,16 +328,14 @@ export default function LandingPage() {
       <footer className="border-t border-[#1a2b3b] bg-black px-12 py-12 flex flex-col md:flex-row justify-between items-center gap-12 text-[12px] font-mono uppercase tracking-[0.3em] text-zinc-500">
         <div className="flex flex-col md:flex-row gap-12">
           <span className="cursor-default italic text-zinc-700">© 2026_PILOT_CORE</span>
-          <a href="https://github.com/MayurK-cmd/Pacificia-Trading-Bot" target="_blank" rel="noreferrer" className="underline underline-offset-8 decoration-zinc-800 hover:text-white transition-colors font-bold">Github_Source</a>
+          <a href="" target="_blank" rel="noreferrer" className="underline underline-offset-8 decoration-zinc-800 hover:text-white transition-colors font-bold">Github_Source</a>
           <button className="hover:text-white transition-colors text-zinc-600">Protocol_Status: {systemTime}</button>
         </div>
         <div className="flex gap-10 items-center">
           <a href="https://test-app.pacifica.fi/" target="_blank" rel="noreferrer" className="hover:text-[#00d1ff] transition-colors underline underline-offset-4 decoration-[#1a2b3b]">
             Pacifica_App
           </a>
-          <a href="https://pacifica.gitbook.io/docs/hackathon/pacifica-hackathon" target="_blank" rel="noreferrer" className="hover:text-[#00d1ff] transition-colors underline underline-offset-4 decoration-[#1a2b3b]">
-            Hackathon_Docs
-          </a>
+          
           <div className="flex items-center gap-4 border border-zinc-900 px-6 py-3 bg-zinc-950/50 rounded-sm">
              <motion.span
               animate={{ opacity: [1, 0.4, 1] }}

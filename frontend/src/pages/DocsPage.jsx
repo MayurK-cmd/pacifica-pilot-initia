@@ -213,7 +213,7 @@ export default function DocsPage() {
                 <h3 style={{ color: blue }} className="text-xl font-bold uppercase tracking-widest italic">Step 1: Clone & Install Dependencies</h3>
                 <pre className="bg-[#050a12] border border-[#1a2b3b] p-8 text-zinc-300 text-sm font-mono leading-7 overflow-x-auto shadow-2xl">
 {`# Clone repository
-git clone https://github.com/MayurK-cmd/Pacificia-Trading-Bot.git
+git clone 
 cd Pacificia-Trading-Bot
 
 # Install backend dependencies
@@ -532,7 +532,7 @@ python main.py`}
       <footer className="border-t border-[#1a2b3b] bg-black px-12 py-12 flex flex-col md:flex-row justify-between items-center gap-12 text-[12px] font-mono uppercase tracking-[0.3em] text-zinc-500">
         <div className="flex flex-col md:flex-row gap-12">
           <span className="cursor-default italic text-zinc-700">© 2026_PILOT_CORE</span>
-          <a href="https://github.com/MayurK-cmd/Pacificia-Trading-Bot" target="_blank" rel="noreferrer" className="underline underline-offset-8 decoration-zinc-800 hover:text-white transition-colors font-bold">Github_Source</a>
+          <a href="" target="_blank" rel="noreferrer" className="underline underline-offset-8 decoration-zinc-800 hover:text-white transition-colors font-bold">Github_Source</a>
           <button className="hover:text-white transition-colors text-zinc-600">Protocol_Status: {systemTime}</button>
         </div>
         <div className="flex gap-10 items-center">
