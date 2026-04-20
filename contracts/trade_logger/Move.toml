@@ -1,0 +1,9 @@
+[package]
+name = "trade_logger"
+version = "0.0.1"
+
+[dependencies]
+InitiaStdlib = { git = "https://github.com/initia-labs/movevm.git", subdir = "precompile/modules/initia_stdlib", rev = "main" }
+
+[addresses]
+trade_logger_addr = "0x34DD0685B883700C68DBE97ABC2AD93F26746737"

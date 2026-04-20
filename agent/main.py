@@ -20,6 +20,7 @@ import sentiment as snt
 import strategy as strat
 import executor as exe
 import logger as log
+from initia_logger import log_to_initia
 
 BACKEND_URL  = os.getenv("BACKEND_URL", "")
 AGENT_SECRET = os.getenv("AGENT_API_SECRET", "")
@@ -118,6 +119,18 @@ def process_symbol(
                 order_result=close_result,
                 pnl_usdc=pnl,
             )
+            # Log to Initia blockchain
+            log_to_initia(
+                symbol=symbol,
+                action="EXIT",
+                price=current_price,
+                pnl_usdc=pnl if pnl else 0.0,
+                confidence=1.0,
+                rsi_5m=market.get("rsi_5m"),
+                rsi_1h=market.get("rsi_1h"),
+                reasoning=f"Auto-exit: {exit_reason}",
+                dry_run=DRY_RUN,
+            )
             log.send_heartbeat(symbol=symbol)
             return
 
@@ -183,6 +196,18 @@ def process_symbol(
 
         # 6. Log to backend
         log.log_decision(decision, market, sentiment, order_result, pnl_usdc=pnl_usdc)
+        # Log to Initia blockchain
+        log_to_initia(
+            symbol=symbol,
+            action=decision.get("action", "HOLD"),
+            price=current_price,
+            pnl_usdc=pnl_usdc if pnl_usdc else 0.0,
+            confidence=decision.get("confidence", 0.0),
+            rsi_5m=market.get("rsi_5m"),
+            rsi_1h=market.get("rsi_1h"),
+            reasoning=decision.get("reasoning", ""),
+            dry_run=DRY_RUN,
+        )
         log.send_heartbeat(symbol=symbol)
 
     except Exception as e:
