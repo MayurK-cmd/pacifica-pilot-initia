@@ -1,22 +1,33 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { PrivyProvider } from "@privy-io/react-auth";
-import App from "./App";
+import { InterwovenKitProvider, TESTNET, injectStyles } from "@initia/interwovenkit-react";
+import { createConfig, http, WagmiProvider } from "wagmi";
+import { initia } from "wagmi/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { default as App } from "./App";
 import "./index.css";
 
-const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
+// Inject InterwovenKit styles
+injectStyles();
+
+// Create wagmi config for Initia testnet
+const config = createConfig({
+  chains: [initia],
+  transports: {
+    [initia.id]: http(),
+  },
+});
+
+const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <PrivyProvider
-      appId={PRIVY_APP_ID}
-      config={{
-        loginMethods: ["email", "wallet"],
-        appearance: { theme: "dark" },
-        embeddedWallets: { createOnLogin: "users-without-wallets" },
-      }}
-    >
-      <App />
-    </PrivyProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <InterwovenKitProvider {...TESTNET}>
+          <App />
+        </InterwovenKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   </StrictMode>
 );

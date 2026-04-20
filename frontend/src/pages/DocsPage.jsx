@@ -201,8 +201,6 @@ LOOP_INTERVAL_SECONDS=300`}
                   <h4 className="text-white font-bold uppercase tracking-widest text-xs">Step B: Local Backend (.env)</h4>
                   <pre className="bg-[#050a12] border border-[#1a2b3b] p-8 text-zinc-300 text-sm font-mono leading-7 overflow-x-auto">
 {`MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/pacifica
-PRIVY_APP_ID=<privy_id>
-PRIVY_APP_SECRET=<privy_secret>
 ENCRYPTION_SECRET=<32_char_hex>
 AGENT_API_SECRET=<secure_random_string>`}
                   </pre>
@@ -211,8 +209,7 @@ AGENT_API_SECRET=<secure_random_string>`}
                 <div className="space-y-4">
                   <h4 className="text-white font-bold uppercase tracking-widest text-xs">Step C: Local Frontend (.env)</h4>
                   <pre className="bg-[#050a12] border border-[#1a2b3b] p-8 text-zinc-300 text-sm font-mono leading-7 overflow-x-auto">
-{`VITE_API_URL=http://localhost:3001
-VITE_PRIVY_APP_ID=<privy_id>`}
+{`VITE_API_URL=http://localhost:3001`}
                   </pre>
                 </div>
 
@@ -259,14 +256,11 @@ VITE_PRIVY_APP_ID=<privy_id>`}
                   <pre className="bg-[#050a12] border border-[#1a2b3b] p-8 text-zinc-300 text-sm font-mono leading-7 overflow-x-auto shadow-2xl">
 {`# backend/.env
 MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/pacifica
-PRIVY_APP_ID=<privy_id>
-PRIVY_APP_SECRET=<privy_secret>
 ENCRYPTION_SECRET=<32_char_hex>
 AGENT_API_SECRET=local_dev_secret_123
 
 # frontend/.env
 VITE_API_URL=http://localhost:3001
-VITE_PRIVY_APP_ID=<privy_id>
 
 # agent/.env
 BACKEND_URL=http://localhost:3001

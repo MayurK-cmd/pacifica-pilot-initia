@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useDisconnect } from "wagmi";
 import { useApi } from "./useApi";
 
 // Pages
@@ -11,26 +11,26 @@ import OnboardingPage from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 
 export default function App() {
-  const { ready, authenticated, user, logout } = usePrivy();
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const api = useApi();
   const [onboarded, setOnboarded] = useState(null);
 
   useEffect(() => {
     // Only sync if we have a user and are authenticated
-    if (!authenticated || !user) {
+    if (!isConnected || !address) {
       setOnboarded(null);
       return;
     }
 
-    api.post("/api/auth/sync", { 
-      email: user.email?.address || null, 
-      walletAddress: user.wallet?.address || null 
+    api.post("/api/auth/sync", {
+      walletAddress: address || null
     })
       .then(data => setOnboarded(data.onboarded))
       .catch(() => setOnboarded(false));
-  }, [authenticated, user, api]);
+  }, [isConnected, address, api]);
 
-  if (!ready) return (
+  if (!isConnected && address === undefined) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center font-mono text-zinc-500 uppercase tracking-widest">
       Initialising_System_Core...
     </div>
@@ -41,26 +41,26 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/docs" element={<DocsPage />} />
-        
-        {/* Login Route: If already logged in, go to dashboard */}
-        <Route 
-          path="/login" 
-          element={authenticated ? <Navigate to="/dashboard" /> : <LoginPage />} 
+
+        {/* Login Route: If already connected, go to dashboard */}
+        <Route
+          path="/login"
+          element={isConnected ? <Navigate to="/dashboard" /> : <LoginPage />}
         />
 
         {/* Protected Dashboard Route */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
-            !authenticated ? <Navigate to="/login" /> : 
+            !isConnected ? <Navigate to="/login" /> :
             onboarded === null ? (
               <div className="min-h-screen bg-zinc-950 flex items-center justify-center font-mono text-zinc-500">SYNCING_STATE...</div>
             ) : !onboarded ? (
               <OnboardingPage onDone={() => setOnboarded(true)} />
             ) : (
-              <Dashboard user={user} onLogout={logout} />
+              <Dashboard user={{ wallet: { address } }} onLogout={disconnect} />
             )
-          } 
+          }
         />
 
         <Route path="*" element={<Navigate to="/" />} />

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useApi } from "../useApi";
+import { useAccount } from "wagmi";
 
 export default function OnboardingPage({ onDone }) {
   const api = useApi();
-  const [solanaAddress, setSolanaAddress] = useState("");
+  const { address: initiaAddress } = useAccount();
+  const [pacificaAddress, setPacificaAddress] = useState("");
   const [privateKey, setPrivateKey] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
@@ -11,15 +13,16 @@ export default function OnboardingPage({ onDone }) {
   const PACIFICA_BLUE = "#00d1ff";
 
   async function submit() {
-    if (!solanaAddress.trim()) { setError("Solana wallet address is required"); return; }
+    if (!pacificaAddress.trim()) { setError("Pacifica wallet address is required"); return; }
     if (!privateKey.trim()) { setError("Agent private key is required"); return; }
     setLoading(true);
     setError("");
     try {
       await api.post("/api/auth/keys", {
-        pacificaAddress: solanaAddress.trim(),
+        pacificaAddress: pacificaAddress.trim(),
         pacificaPrivateKey: privateKey.trim(),
         pacificaApiKey: apiKey.trim() || undefined,
+        initiaAddress: initiaAddress || undefined,
       });
       onDone();
     } catch (e) {
@@ -39,13 +42,25 @@ export default function OnboardingPage({ onDone }) {
 
         <div className="space-y-8">
           <div className="flex flex-col gap-2">
-            <label className="text-[10px] uppercase tracking-widest text-zinc-500">Solana wallet (Main) *</label>
+            <label className="text-[10px] uppercase tracking-widest text-zinc-500">Initia Wallet *</label>
             <input
               type="text"
-              className="bg-transparent border border-[#1a2b3b] p-3 text-sm focus:border-[#00d1ff] outline-none transition-colors"
-              placeholder="Base58 Public Key"
-              value={solanaAddress}
-              onChange={e => setSolanaAddress(e.target.value)}
+              className="bg-transparent border border-[#1a2b3b] p-3 text-sm focus:border-[#00d1ff] outline-none transition-colors font-mono"
+              placeholder={initiaAddress || "0x..."}
+              value={initiaAddress || ""}
+              disabled
+            />
+            <small className="text-[9px] text-zinc-600">Connected Initia address (read-only)</small>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-widest text-zinc-500">Pacifica Wallet Address *</label>
+            <input
+              type="text"
+              className="bg-transparent border border-[#1a2b3b] p-3 text-sm focus:border-[#00d1ff] outline-none transition-colors font-mono"
+              placeholder="Base58 Public Key from Phantom"
+              value={pacificaAddress}
+              onChange={e => setPacificaAddress(e.target.value)}
             />
             <small className="text-[9px] text-zinc-600">Phantom address used on test-app.pacifica.fi</small>
           </div>

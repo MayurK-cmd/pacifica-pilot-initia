@@ -64,7 +64,7 @@ export default function Dashboard({ user, onLogout }) {
     return () => clearInterval(id);
   }, []);
 
-  const display = user?.email?.address || (user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : "AUTH_OK");
+  const display = user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : "CONNECTED";
 
   return (
     <div className="min-h-screen bg-[#020408] text-zinc-300 font-sans selection:bg-[#00d1ff] selection:text-black flex flex-col cursor-default">

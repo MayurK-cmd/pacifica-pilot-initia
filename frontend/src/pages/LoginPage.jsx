@@ -1,8 +1,8 @@
-import { usePrivy } from "@privy-io/react-auth";
+import { useInterwovenKit } from "@initia/interwovenkit-react";
 import { Link } from "react-router-dom";
 
 export default function LoginPage() {
-  const { login } = usePrivy();
+  const { openConnect, address } = useInterwovenKit();
   const PACIFICA_BLUE = "#00d1ff";
 
   return (
@@ -17,16 +17,16 @@ export default function LoginPage() {
           // Authentication_Required
         </h2>
 
-        <button 
-          onClick={login}
-          className="w-full text-black py-4 font-bold uppercase tracking-widest text-xs transition-all active:scale-[0.98] mb-6 cursor-pointer hover:opacity-90"
-          style={{ backgroundColor: PACIFICA_BLUE, boxShadow: `0 0 20px ${PACIFICA_BLUE}33` }}
+        <button
+          onClick={() => openConnect()}
+          className="w-full text-black py-4 font-bold uppercase tracking-widest text-xs transition-all active:scale-[0.98] mb-6 cursor-pointer hover:opacity-90 shadow-[0_0_25px_rgba(0,209,255,0.3)]"
+          style={{ backgroundColor: PACIFICA_BLUE }}
         >
-          Connect_Wallet_/_Email
+          {address ? "Wallet_Connected" : "Connect_Wallet"}
         </button>
 
         <p className="text-[10px] text-zinc-600 text-center leading-relaxed mb-8 uppercase tracking-tighter">
-          Secure access via Privy. By connecting, you agree to autonomous agent execution protocols.
+          Secure access via Initia InterwovenKit. By connecting, you agree to autonomous agent execution protocols.
         </p>
 
         <div className="border-t border-[#1a2b3b] pt-6 text-center">
@@ -35,7 +35,7 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
-      
+
       <div className="mt-8 text-[9px] text-zinc-800 uppercase tracking-[0.5em]">
         System_Secured_AES-256
       </div>

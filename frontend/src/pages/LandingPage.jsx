@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAccount } from "wagmi";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LandingPage() {
-  const { authenticated } = usePrivy();
+  const { isConnected } = useAccount();
   const navigate = useNavigate();
   const [status, setStatus] = useState({ enabled: false, active: false });
   const [systemTime, setSystemTime] = useState(new Date().toLocaleTimeString());
@@ -39,7 +39,7 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, [API_BASE]); // Added API_BASE as dependency
 
-  const handleLaunch = () => authenticated ? navigate("/dashboard") : navigate("/login");
+  const handleLaunch = () => isConnected ? navigate("/dashboard") : navigate("/login");
 
   // Live ticker data
   const [tickerData, setTickerData] = useState([]);
@@ -120,12 +120,12 @@ export default function LandingPage() {
             <span>{status.active ? 'NODE_ACTIVE' : 'NODE_OFFLINE'}</span>
           </div>
           <Link to="/docs" className="hover:text-white transition-colors" style={{ borderBottom: `1px solid ${PACIFICA_BLUE}33` }}>Documentation</Link>
-          <button 
-            onClick={handleLaunch} 
-            className="px-8 py-2 font-black transition-all uppercase active:scale-95 shadow-xl hover:opacity-90 cursor-pointer" 
+          <button
+            onClick={handleLaunch}
+            className="px-8 py-2 font-black transition-all uppercase active:scale-95 shadow-xl hover:opacity-90 cursor-pointer"
             style={{ backgroundColor: PACIFICA_BLUE, color: '#000' }}
           >
-            {authenticated ? 'Enter_Terminal' : 'Initialize_Node'}
+            {isConnected ? 'Enter_Terminal' : 'Initialize_Node'}
           </button>
         </div>
       </nav>

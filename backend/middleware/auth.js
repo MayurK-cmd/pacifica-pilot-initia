@@ -1,25 +1,61 @@
-const { PrivyClient } = require("@privy-io/server-auth");
+const { verifyMessage } = require("viem");
 const User = require("../models/User");
 const Config = require("../models/Config");
 
-const privy = new PrivyClient(
-  process.env.PRIVY_APP_ID,
-  process.env.PRIVY_APP_SECRET
-);
+// In-memory nonce store for signature verification
+const nonces = new Map();
+
+function getNonce(address) {
+  if (!nonces.has(address)) {
+    nonces.set(address, Math.random().toString(36).substring(2, 15));
+  }
+  return nonces.get(address);
+}
 
 async function requireAuth(req, res, next) {
   try {
-    const token = (req.headers.authorization || "").replace("Bearer ", "").trim();
-    if (!token) return res.status(401).json({ error: "No token" });
+    const authHeader = req.headers.authorization;
+    const signature = req.headers["x-signature"];
 
-    // Verify with Privy
-    const claims = await privy.verifyAuthToken(token);
-    const privyUserId = claims.userId;
+    if (!authHeader || !signature) {
+      return res.status(401).json({ error: "No auth header or signature" });
+    }
+
+    // Extract address from authorization header (format: "0xaddress")
+    const address = authHeader.replace("Bearer ", "").trim();
+
+    if (!address || !address.startsWith("0x")) {
+      return res.status(401).json({ error: "Invalid address format" });
+    }
+
+    // Get or create nonce for this address
+    const nonce = getNonce(address);
+
+    // The message that was signed
+    const message = `Sign in to PacificaPilot\n\nAddress: ${address}\nNonce: ${nonce}`;
+
+    try {
+      // Verify the signature
+      const recoveredAddress = await verifyMessage({
+        message,
+        signature: signature,
+      });
+
+      // Check if recovered address matches
+      if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
+        return res.status(401).json({ error: "Signature verification failed" });
+      }
+    } catch (e) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
 
     // Find or create user doc
-    let user = await User.findOne({ privyUserId });
+    let user = await User.findOne({ initiaAddress: address });
     if (!user) {
-      user = await User.create({ privyUserId });
+      user = await User.create({
+        initiaAddress: address,
+        walletAddress: address
+      });
       // Auto-create a default config for them
       await Config.create({ userId: user._id });
     }
@@ -27,8 +63,9 @@ async function requireAuth(req, res, next) {
     req.user = user;
     next();
   } catch (e) {
-    return res.status(401).json({ error: "Invalid token" });
+    console.error("Auth error:", e);
+    return res.status(401).json({ error: "Authentication failed" });
   }
 }
 
-module.exports = { requireAuth, privy };
+module.exports = { requireAuth, getNonce };

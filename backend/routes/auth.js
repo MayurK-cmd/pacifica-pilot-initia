@@ -1,16 +1,25 @@
 const express = require("express");
 const router  = express.Router();
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, getNonce } = require("../middleware/auth");
 const { encrypt, decrypt } = require("../middleware/crypto");
 const User = require("../models/User");
 
+// GET /api/auth/nonce
+// Returns a nonce for the frontend to include in the signature
+router.get("/nonce", (req, res) => {
+  const address = req.query.address;
+  if (!address) {
+    return res.status(400).json({ error: "Address required" });
+  }
+  res.json({ nonce: getNonce(address) });
+});
+
 // POST /api/auth/sync
-// Called by frontend right after Privy login — syncs email + wallet into our DB
+// Called by frontend after wallet connect — syncs Initia address into our DB
 router.post("/sync", requireAuth, async (req, res) => {
   try {
-    const { email, walletAddress } = req.body;
+    const { walletAddress } = req.body;
     const update = {};
-    if (email)         update.email         = email;
     if (walletAddress) update.walletAddress  = walletAddress;
 
     const user = await User.findByIdAndUpdate(
@@ -27,10 +36,10 @@ router.post("/sync", requireAuth, async (req, res) => {
 // Saves encrypted Pacifica private key (and optional API key) — onboarding step
 router.post("/keys", requireAuth, async (req, res) => {
   try {
-    const { pacificaPrivateKey, pacificaApiKey, pacificaAddress } = req.body;
+    const { pacificaPrivateKey, pacificaApiKey, pacificaAddress, initiaAddress } = req.body;
 
     if (!pacificaAddress) {
-      return res.status(400).json({ error: "pacificaAddress (Solana main wallet pubkey) is required" });
+      return res.status(400).json({ error: "pacificaAddress is required" });
     }
     if (!pacificaPrivateKey) {
       return res.status(400).json({ error: "pacificaPrivateKey is required" });
@@ -41,6 +50,7 @@ router.post("/keys", requireAuth, async (req, res) => {
       pacificaPrivateKey: encrypt(pacificaPrivateKey),
       onboarded: true,
     };
+    if (initiaAddress) update.initiaAddress = initiaAddress;
     if (pacificaApiKey) update.pacificaApiKey = encrypt(pacificaApiKey);
 
     await User.findByIdAndUpdate(req.user._id, { $set: update });
