@@ -1,1 +1,0 @@
-add .env remove privy wallet see claude chat 
