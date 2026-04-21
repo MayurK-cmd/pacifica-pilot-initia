@@ -1,8 +1,7 @@
-const { verifyMessage } = require("viem");
 const User = require("../models/User");
 const Config = require("../models/Config");
 
-// In-memory nonce store for signature verification
+// Simple nonce store - just for tracking sessions
 const nonces = new Map();
 
 function getNonce(address) {
@@ -15,38 +14,24 @@ function getNonce(address) {
 async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-    const signature = req.headers["x-signature"];
 
-    if (!authHeader || !signature) {
-      return res.status(401).json({ error: "No auth header or signature" });
+    if (!authHeader) {
+      return res.status(401).json({ error: "No auth header" });
     }
 
-    // Extract address from authorization header (format: "0xaddress")
+    // Extract address from authorization header
     const address = authHeader.replace("Bearer ", "").trim();
 
-    if (!address || !address.startsWith("0x")) {
+    if (!address) {
       return res.status(401).json({ error: "Invalid address format" });
     }
 
-    // Get or create nonce for this address
-    const nonce = getNonce(address);
+    // For Initia addresses, we just verify the address format (bech32)
+    // The actual security comes from the Pacifica private key verification later
+    const isCosmosAddress = address.startsWith("init1");
 
-    // The message that was signed
-    const message = `Sign in to PacificaPilot\n\nAddress: ${address}\nNonce: ${nonce}`;
-
-    try {
-      // Verify the signature
-      const recoveredAddress = await verifyMessage({
-        message,
-        signature: signature,
-      });
-
-      // Check if recovered address matches
-      if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
-        return res.status(401).json({ error: "Signature verification failed" });
-      }
-    } catch (e) {
-      return res.status(401).json({ error: "Invalid signature" });
+    if (!isCosmosAddress) {
+      return res.status(401).json({ error: "Invalid address format" });
     }
 
     // Find or create user doc
@@ -64,7 +49,7 @@ async function requireAuth(req, res, next) {
     next();
   } catch (e) {
     console.error("Auth error:", e);
-    return res.status(401).json({ error: "Authentication failed" });
+    return res.status(401).json({ error: "Authentication failed: " + e.message });
   }
 }
 

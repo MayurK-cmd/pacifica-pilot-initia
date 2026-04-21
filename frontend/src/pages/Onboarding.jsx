@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useApi } from "../useApi";
-import { useAccount } from "wagmi";
+import { useInterwovenKit } from "@initia/interwovenkit-react";
 
 export default function OnboardingPage({ onDone }) {
   const api = useApi();
-  const { address: initiaAddress } = useAccount();
+  const { address: initiaAddress } = useInterwovenKit();
   const [pacificaAddress, setPacificaAddress] = useState("");
   const [privateKey, setPrivateKey] = useState("");
   const [apiKey, setApiKey] = useState("");

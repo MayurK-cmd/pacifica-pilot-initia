@@ -1,33 +1,39 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { InterwovenKitProvider, TESTNET, injectStyles } from "@initia/interwovenkit-react";
+import InterwovenKitStyles from "@initia/interwovenkit-react/styles.js";
 import { createConfig, http, WagmiProvider } from "wagmi";
-import { initia } from "wagmi/chains";
+import { mainnet } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { default as App } from "./App";
 import "./index.css";
 
-// Inject InterwovenKit styles
-injectStyles();
-
-// Create wagmi config for Initia testnet
+// Create wagmi config - uses mainnet since Initia Wallet uses amino signing
 const config = createConfig({
-  chains: [initia],
+  chains: [mainnet],
   transports: {
-    [initia.id]: http(),
+    [mainnet.id]: http(),
   },
 });
 
 const queryClient = new QueryClient();
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <InterwovenKitProvider {...TESTNET}>
-          <App />
-        </InterwovenKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
-  </StrictMode>
-);
+function Root() {
+  useEffect(() => {
+    injectStyles(InterwovenKitStyles);
+  }, []);
+
+  return (
+    <StrictMode>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <InterwovenKitProvider {...TESTNET} defaultChainId="initiation-2">
+            <App />
+          </InterwovenKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </StrictMode>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<Root />);

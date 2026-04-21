@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useInterwovenKit } from "@initia/interwovenkit-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LandingPage() {
-  const { isConnected } = useAccount();
+  const { isConnected } = useInterwovenKit();
   const navigate = useNavigate();
   const [status, setStatus] = useState({ enabled: false, active: false });
   const [systemTime, setSystemTime] = useState(new Date().toLocaleTimeString());

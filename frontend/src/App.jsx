@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAccount, useDisconnect } from "wagmi";
+import { useInterwovenKit } from "@initia/interwovenkit-react";
 import { useApi } from "./useApi";
 
 // Pages
@@ -11,8 +11,7 @@ import OnboardingPage from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 
 export default function App() {
-  const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
+  const { address, isConnected, openConnect } = useInterwovenKit();
   const api = useApi();
   const [onboarded, setOnboarded] = useState(null);
 
@@ -58,7 +57,7 @@ export default function App() {
             ) : !onboarded ? (
               <OnboardingPage onDone={() => setOnboarded(true)} />
             ) : (
-              <Dashboard user={{ wallet: { address } }} onLogout={disconnect} />
+              <Dashboard user={{ wallet: { address } }} onLogout={() => {}} />
             )
           }
         />
