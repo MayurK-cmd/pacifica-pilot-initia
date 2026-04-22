@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useApi } from "../useApi";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTradeLogger } from "../hooks/useTradeLogger";
+import { useAccount } from "wagmi";
 
 const PACIFICA_API = "https://test-api.pacifica.fi/api/v1";
 const PACIFICA_BLUE = "#00d1ff";
@@ -26,13 +28,22 @@ const RISK_PROFILES = {
 
 export default function ConfigTab() {
   const api = useApi();
+  const { address } = useAccount();
+  const { totalDecisions, owner, recentDecisions, loadingDecisions, checkAuthorizedAgent } = useTradeLogger();
   const [cfg, setCfg] = useState(null);
   const [allSymbols, setAllSymbols] = useState([]);
   const [page, setPage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAuthorizedAgent, setIsAuthorizedAgent] = useState(false);
   const PAGE_SIZE = 60;
+
+  useEffect(() => {
+    if (address) {
+      checkAuthorizedAgent(address).then(setIsAuthorizedAgent).catch(() => setIsAuthorizedAgent(false));
+    }
+  }, [address]);
 
   useEffect(() => {
     api.get("/api/config").then(setCfg).catch(() => {});
@@ -159,6 +170,114 @@ export default function ConfigTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl space-y-20 pb-32">
+
+      {/* Contract Status Section */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-4">
+          <h3 className="text-zinc-500 text-[10px] font-mono uppercase tracking-[0.5em] italic">// OnChain_Contract_Status</h3>
+          <div className="h-px flex-1 bg-zinc-900" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Contract Address */}
+          <div className="p-5 border border-[#1a2b3b] bg-zinc-950/50">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[#00d1ff] text-lg">◈</span>
+              <span className="text-[9px] text-zinc-500 uppercase tracking-widest">Contract Address</span>
+            </div>
+            <p className="text-[10px] font-mono text-white truncate">0x04F5...17720dc</p>
+            <a
+              href="https://hashkeychain-testnet.explorer.alt.technology/address/0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[8px] text-[#00d1ff] underline underline-offset-4 mt-2 inline-block hover:text-white transition-colors"
+            >
+              View on Explorer →
+            </a>
+          </div>
+
+          {/* Owner */}
+          <div className="p-5 border border-[#1a2b3b] bg-zinc-950/50">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[#00d1ff] text-lg">◈</span>
+              <span className="text-[9px] text-zinc-500 uppercase tracking-widest">Contract Owner</span>
+            </div>
+            <p className="text-[10px] font-mono text-white truncate">
+              {owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : "Loading..."}
+            </p>
+          </div>
+
+          {/* Total Decisions */}
+          <div className="p-5 border border-[#1a2b3b] bg-zinc-950/50">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[#00d1ff] text-lg">◈</span>
+              <span className="text-[9px] text-zinc-500 uppercase tracking-widest">Total Decisions</span>
+            </div>
+            <p className="text-2xl font-black text-white font-mono">
+              {loadingDecisions ? "..." : totalDecisions}
+            </p>
+          </div>
+
+          {/* Agent Status */}
+          <div className="p-5 border border-[#1a2b3b] bg-zinc-950/50">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[#00d1ff] text-lg">◈</span>
+              <span className="text-[9px] text-zinc-500 uppercase tracking-widest">Agent Status</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isAuthorizedAgent ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-zinc-600'}`} />
+              <p className="text-[10px] font-mono text-white uppercase">
+                {isAuthorizedAgent ? "Authorized" : "Not Authorized"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Decisions Summary */}
+        {!loadingDecisions && recentDecisions && recentDecisions.length > 0 && (
+          <div className="p-5 border border-[#1a2b3b] bg-zinc-950/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[#00d1ff] text-lg">◈</span>
+                <span className="text-[9px] text-zinc-500 uppercase tracking-widest">Latest Decision</span>
+              </div>
+              <span className="text-[8px] text-zinc-600 uppercase tracking-widest">
+                {new Date(Number(recentDecisions[0]?.timestamp) * 1000).toLocaleString()}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-[9px] font-mono uppercase tracking-widest">
+              <div>
+                <span className="text-zinc-600 block mb-1">Symbol</span>
+                <span className="text-white">{recentDecisions[0]?.symbol}</span>
+              </div>
+              <div>
+                <span className="text-zinc-600 block mb-1">Action</span>
+                <span className={recentDecisions[0]?.action === "LONG" ? "text-green-500" : recentDecisions[0]?.action === "SHORT" ? "text-red-500" : "text-zinc-400"}>
+                  {recentDecisions[0]?.action}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-600 block mb-1">Price</span>
+                <span className="text-white">${(Number(recentDecisions[0]?.price) / 1e6).toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-zinc-600 block mb-1">Confidence</span>
+                <span className="text-white">{recentDecisions[0]?.confidence}%</span>
+              </div>
+              <div>
+                <span className="text-zinc-600 block mb-1">RSI 5m/1h</span>
+                <span className="text-white">{Number(recentDecisions[0]?.rsi5m) / 100}/{Number(recentDecisions[0]?.rsi1h) / 100}</span>
+              </div>
+              <div>
+                <span className="text-zinc-600 block mb-1">Mode</span>
+                <span className={recentDecisions[0]?.dryRun ? "text-yellow-500" : "text-green-500"}>
+                  {recentDecisions[0]?.dryRun ? "DRY RUN" : "LIVE"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* 1. Technical Disclaimer */}
       <div className="border border-yellow-900/50 bg-yellow-900/5 p-6 font-mono relative overflow-hidden group">

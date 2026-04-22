@@ -20,7 +20,7 @@ import sentiment as snt
 import strategy as strat
 import executor as exe
 import logger as log
-from initia_logger import log_to_initia
+from initia_logger_evm import log_to_initia_evm as log_to_initia
 
 BACKEND_URL  = os.getenv("BACKEND_URL", "")
 AGENT_SECRET = os.getenv("AGENT_API_SECRET", "")

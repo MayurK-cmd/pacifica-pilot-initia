@@ -2,6 +2,7 @@ const express  = require("express");
 const router   = express.Router();
 const mongoose = require("mongoose");
 const { requireAuth } = require("../middleware/auth");
+const { contractLogger } = require("../services/contractLogger");
 
 const tradeSchema = new mongoose.Schema({
   userId:          { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -83,8 +84,20 @@ router.post("/", async (req, res) => {
     if (!symbol || !action || !userId) {
       return res.status(400).json({ error: "symbol, action and userId are required" });
     }
+
+    // Create trade in database first
     const trade = await Trade.create(req.body);
-    res.status(201).json(trade);
+
+    // Log to contract (best effort, don't block response)
+    contractLogger.logDecision(trade).then(receipt => {
+      if (receipt) {
+        console.log("[Trades] Logged to contract:", receipt.transactionHash);
+        // Optionally update trade with contract tx hash
+        Trade.findByIdAndUpdate(trade._id, { contractTxHash: receipt.transactionHash }).catch(() => {});
+      }
+    }).catch(err => console.error("[Trades] Contract log error:", err));
+
+    res.status(201).json({ ...trade, contractLogging: "pending" });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

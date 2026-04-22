@@ -13,7 +13,7 @@ import os, json, time, uuid, base58, requests
 from pathlib import Path
 from dotenv import load_dotenv
 from solders.keypair import Keypair
-from initia_logger import log_to_initia
+from initia_logger_evm import log_to_initia_evm as log_to_initia
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 

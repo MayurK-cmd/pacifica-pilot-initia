@@ -1,14 +1,29 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { useTradeLogger } from "../hooks/useTradeLogger";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const PACIFICA_BLUE = "#00d1ff";
 
 export default function LogsTab() {
+  const { recentDecisions } = useTradeLogger();
   const [logs, setLogs] = useState([]);
+  const [contractLogs, setContractLogs] = useState([]);
   const logRef = useRef(null);
   const autoScrollRef = useRef(true);
   const [filterText, setFilterText] = useState("");
+  const [showContractLogs, setShowContractLogs] = useState(false);
+
+  // Generate logs from contract decisions
+  useEffect(() => {
+    if (recentDecisions && recentDecisions.length > 0) {
+      const generatedLogs = recentDecisions.map(d => ({
+        line: `[CONTRACT] ${d.action} ${d.symbol} @ $${(Number(d.price) / 1e6).toFixed(2)} | Conf: ${d.confidence}% | RSI: ${Number(d.rsi5m) / 100}/${Number(d.rsi1h) / 100} | ${d.dryRun ? "DRY RUN" : "LIVE"}`,
+        ts: new Date(Number(d.timestamp) * 1000).toISOString(),
+      }));
+      setContractLogs(generatedLogs);
+    }
+  }, [recentDecisions]);
 
   useEffect(() => {
     // Initial fetch of historical logs
@@ -79,9 +94,10 @@ export default function LogsTab() {
   };
 
   // Filter logs based on search text
+  const logsToDisplay = showContractLogs ? contractLogs : logs;
   const filteredLogs = filterText
-    ? logs.filter(log => log.line.toLowerCase().includes(filterText.toLowerCase()))
-    : logs;
+    ? logsToDisplay.filter(log => log.line.toLowerCase().includes(filterText.toLowerCase()))
+    : logsToDisplay;
 
   return (
     <div className="space-y-4 h-[calc(100vh-250px)] flex flex-col">
@@ -92,8 +108,18 @@ export default function LogsTab() {
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]" />
             <span className="text-[9px] text-[#00d1ff] font-black uppercase tracking-[0.2em]">LIVE_STREAM</span>
           </div>
+          <button
+            onClick={() => setShowContractLogs(!showContractLogs)}
+            className={`cursor-pointer px-3 py-1.5 text-[8px] font-black uppercase tracking-widest border ${
+              showContractLogs
+                ? "border-[#00d1ff] text-[#00d1ff] bg-[#00d1ff11]"
+                : "border-zinc-800 text-zinc-600 hover:border-zinc-600"
+            }`}
+          >
+            {showContractLogs ? "Contract Logs" : "Agent Logs"}
+          </button>
           <span className="text-zinc-600 font-mono text-[10px] uppercase tracking-widest">
-            Buffer: <span className="text-zinc-400">{filteredLogs.length}</span> / {logs.length}
+            Buffer: <span className="text-zinc-400">{filteredLogs.length}</span> / {showContractLogs ? contractLogs.length : logs.length}
           </span>
           {filterText && (
             <span className="text-[9px] text-[#00d1ff] font-mono uppercase">

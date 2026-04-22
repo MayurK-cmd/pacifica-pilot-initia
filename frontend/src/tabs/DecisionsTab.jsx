@@ -1,16 +1,25 @@
 import { useState, useEffect, useMemo } from "react";
 import { useApi } from "../useApi";
 import { motion } from "framer-motion";
+import { useTradeLogger } from "../hooks/useTradeLogger";
 
 export default function DecisionsTab() {
   const api = useApi();
+  const { recentDecisions, loadingDecisions, totalDecisions } = useTradeLogger();
   const [trades, setTrades] = useState([]);
   const [stats, setStats] = useState(null);
   const [filter, setFilter] = useState("all"); // all, LONG, SHORT
   const [timeRange, setTimeRange] = useState("all"); // all, 1h, 24h, 7d
+  const [useContractData, setUseContractData] = useState(true);
   const PACIFICA_BLUE = "#00d1ff";
 
   useEffect(() => {
+    // Load from contract (on-chain data)
+    if (useContractData) {
+      // Contract data is loaded by useTradeLogger hook
+      return;
+    }
+    // Fallback to API
     const load = () => {
       api.get("/api/trades?limit=100").then(d => setTrades(d.trades || [])).catch(() => {});
       api.get("/api/trades/stats").then(setStats).catch(() => {});
@@ -18,11 +27,29 @@ export default function DecisionsTab() {
     load();
     const id = setInterval(load, 15_000);
     return () => clearInterval(id);
-  }, [api]);
+  }, [api, useContractData]);
+
+  // Use contract data when available
+  const decisionsToDisplay = useContractData && recentDecisions && recentDecisions.length > 0
+    ? recentDecisions.map(d => ({
+        _id: d.id.toString(),
+        symbol: d.symbol,
+        action: d.action,
+        price: Number(d.price) / 1e6,
+        pnlUsdc: (d.pnlIsNeg ? -1 : 1) * Number(d.pnlUsdc) / 1e6,
+        confidence: d.confidence / 100,
+        rsi5m: Number(d.rsi5m) / 100,
+        rsi1h: Number(d.rsi1h) / 100,
+        reasoning: d.reasoning,
+        dryRun: d.dryRun,
+        timestamp: new Date(Number(d.timestamp) * 1000).toISOString(),
+        mark_price: Number(d.price) / 1e6,
+      }))
+    : trades;
 
   // Filter trades based on action and time range
   const filteredTrades = useMemo(() => {
-    let result = trades;
+    let result = decisionsToDisplay;
 
     // Filter by action type
     if (filter !== "all") {
@@ -42,7 +69,7 @@ export default function DecisionsTab() {
     }
 
     return result;
-  }, [trades, filter, timeRange]);
+  }, [decisionsToDisplay, filter, timeRange]);
 
   // Calculate stats for filtered trades
   const filteredStats = useMemo(() => {
@@ -58,12 +85,19 @@ export default function DecisionsTab() {
         <div>
           <h2 className="text-white text-4xl font-black uppercase tracking-tighter italic">Decision_Ledger</h2>
           <div className="flex gap-6 items-center mt-3 font-mono uppercase tracking-[0.15em] text-[10px]">
-            <span className="text-zinc-600">Total: <b className="text-white">{filteredStats.total}</b></span>
+            <span className="text-zinc-600">On-Chain Total: <b className="text-white">{loadingDecisions ? "..." : totalDecisions}</b></span>
             <span className="text-green-500">Long: <b className="text-white">{filteredStats.longs}</b></span>
             <span className="text-red-500">Short: <b className="text-white">{filteredStats.shorts}</b></span>
-            {stats && (
-              <span className="text-zinc-600">PnL: <b style={{ color: PACIFICA_BLUE }}>${stats.totalPnlUsdc?.toFixed(2) ?? "0.00"}</b></span>
-            )}
+            <button
+              onClick={() => setUseContractData(!useContractData)}
+              className={`ml-4 px-3 py-1 text-[8px] font-black uppercase tracking-widest border cursor-pointer ${
+                useContractData
+                  ? "border-[#00d1ff] text-[#00d1ff] bg-[#00d1ff11]"
+                  : "border-zinc-800 text-zinc-600 hover:border-zinc-600"
+              }`}
+            >
+              {useContractData ? "Contract Data" : "API Data"}
+            </button>
           </div>
         </div>
 
@@ -111,7 +145,7 @@ export default function DecisionsTab() {
 
       {/* Trade Cards */}
       <div className="grid grid-cols-1 gap-4">
-        {filteredTrades.length === 0 ? (
+        {decisionsToDisplay.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -124,13 +158,15 @@ export default function DecisionsTab() {
             <p className="text-zinc-600 text-[9px] uppercase mt-2 tracking-widest">
               {filter !== "all" || timeRange !== "all"
                 ? "Adjust filters to see more results"
-                : "Waiting_For_Inference_Cycle..."}
+                : useContractData
+                  ? "Waiting for on-chain decisions..."
+                  : "Waiting_For_Inference_Cycle..."}
             </p>
           </motion.div>
         ) : (
-          filteredTrades.map((t, i) => (
+          decisionsToDisplay.map((t, i) => (
             <motion.div
-              key={t._id}
+              key={t._id || t.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.03 }}
