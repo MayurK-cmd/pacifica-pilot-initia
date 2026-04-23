@@ -1,0 +1,12 @@
+{
+  "project_name": "Pacifica Pilot",
+  "repo_url": "https://github.com/MayurK-cmd/pacifica-pilot-initia/",
+  "commit_sha": "9f10556e56011168592a5c7df3cdbb5fc817851c",
+  "rollup_chain_id": "2124225178762456",
+  "deployed_address": "0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc",
+  "vm": "evm",
+  "native_feature": "auto-signing",
+  "core_logic_path": "contracts/trade_logger.sol",
+  "native_feature_frontend_path": "frontend/src/Landing.jsx",
+  "demo_video_url": "https://youtu.be/uNhgC_zshbQ?si=MXj_KecGDg6s1O1T"
+}
