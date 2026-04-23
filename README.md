@@ -61,7 +61,7 @@ PacificaPilot is a **full-stack autonomous trading system** that:
 - Configuration: `InterwovenKitProvider` with `TESTNET` preset and `defaultChainId="initiation-2"`
 
 ### TradeLogger Smart Contract (Initia MiniEVM)
-- **Contract Address:** [`0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc`](https://scan.testnet.initia.xyz/address/0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc)
+- **Contract Address:** [`0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc`](https://scan.testnet.initia.xyz/evm-1/evm-contracts/0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc)
 - **Network:** Initia MiniEVM Testnet (Chain ID: `17300`)
 - **RPC:** `https://jsonrpc-evm-1.anvil.asia-southeast.initia.xyz`
 - Every AI decision (symbol, action, price, PnL, confidence, RSI, reasoning) is permanently logged on-chain
