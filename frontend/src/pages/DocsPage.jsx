@@ -30,28 +30,35 @@ export default function DocsPage() {
               </ul>
             </div>
             <div>
-              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">02_Deployment</p>
+              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">02_Initia</p>
+              <ul className="space-y-4 pl-4 border-l border-zinc-800">
+                <li><a href="#initia-integration" className="hover:text-white transition-colors">On-Chain_Logging</a></li>
+                <li><a href="#contract-details" className="hover:text-white transition-colors">Contract_Details</a></li>
+              </ul>
+            </div>
+            <div>
+              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">03_Deployment</p>
               <ul className="space-y-4 pl-4 border-l border-zinc-800">
                 <li><a href="#option1-hybrid" className="hover:text-white transition-colors">Option 1: Hybrid</a></li>
                 <li><a href="#option2-local" className="hover:text-white transition-colors">Option 2: Full Local</a></li>
               </ul>
             </div>
             <div>
-              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">03_Trading</p>
+              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">04_Trading</p>
               <ul className="space-y-4 pl-4 border-l border-zinc-800">
                 <li><a href="#risk-profiles" className="hover:text-white transition-colors">Risk_Profiles</a></li>
                 <li><a href="#simulation-mode" className="hover:text-white transition-colors">Simulation_Mode</a></li>
               </ul>
             </div>
             <div>
-              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">04_Signals</p>
+              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">05_Signals</p>
               <ul className="space-y-4 pl-4 border-l border-zinc-800">
                 <li><a href="#signal-mechanics" className="hover:text-white transition-colors">Signal_Mechanics</a></li>
                 <li><a href="#decision-flow" className="hover:text-white transition-colors">Decision_Flow</a></li>
               </ul>
             </div>
             <div>
-              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">05_Help</p>
+              <p style={{ color: blue }} className="mb-6 opacity-80 italic font-bold border-b border-zinc-900 pb-2">06_Help</p>
               <ul className="space-y-4 pl-4 border-l border-zinc-800">
                 <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
                 <li><a href="#troubleshooting" className="hover:text-white transition-colors">Troubleshooting</a></li>
@@ -73,14 +80,15 @@ export default function DocsPage() {
               <div className="space-y-10">
                 <h3 style={{ color: blue }} className="text-xl font-bold uppercase tracking-widest italic">What is PacificaPilot?</h3>
                 <p className="text-zinc-400 text-lg leading-relaxed uppercase tracking-tighter">
-                  Autonomous AI trading agent for Pacifica perpetual futures with real-time dashboard monitoring.
+                  Autonomous AI trading agent for Pacifica perpetual futures with every decision logged on-chain to Initia MiniEVM for full transparency and auditability.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
                     "Real-time market data (RSI, funding, basis)",
                     "Social sentiment (Elfa AI Twitter analysis)",
                     "AI reasoning (Google Gemini 2.5 Flash)",
-                    "Automated execution (Ed25519-signed orders)",
+                    "On-chain audit trail (Initia MiniEVM)",
+                    "InterwovenKit wallet integration",
                     "Risk management (Trailing stops, limits)"
                   ].map((item, i) => (
                     <div key={i} className="p-5 border border-zinc-900 bg-zinc-950/30 flex gap-4 items-center">
@@ -130,10 +138,79 @@ export default function DocsPage() {
               </div>
             </section>
 
-            {/* 02. Deployment Options */}
+            {/* 02. Initia Integration */}
+            <section id="initia-integration">
+              <div className="flex items-center gap-6 mb-12">
+                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">02. Initia Integration</h2>
+                <div className="h-px flex-1 bg-zinc-800" />
+              </div>
+
+              <div className="space-y-10 mb-24">
+                <h3 style={{ color: blue }} className="text-xl font-bold uppercase tracking-widest italic">On-Chain Decision Logging</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed uppercase tracking-tight">
+                  Every AI trading decision is permanently logged to the TradeLogger smart contract on Initia MiniEVM.
+                  This creates a tamper-proof, verifiable audit trail of every action the agent takes.
+                </p>
+
+                <div className="p-6 border border-[#00d1ff]/30 bg-[#00d1ff]/5">
+                  <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-4">How It Works</h4>
+                  <div className="space-y-4 text-zinc-400 text-sm uppercase tracking-tight">
+                    <p><span className="text-white font-bold">1. Agent Decision:</span> Gemini 2.5 Flash outputs LONG/SHORT/HOLD with confidence and reasoning.</p>
+                    <p><span className="text-white font-bold">2. On-Chain Log:</span> Agent calls logDecision() on Initia MiniEVM via web3.py — symbol, price, PnL, RSI, reasoning stored permanently.</p>
+                    <p><span className="text-white font-bold">3. Frontend Read:</span> Dashboard reads decisions directly from the contract using viem — no backend dependency for on-chain data.</p>
+                    <p><span className="text-white font-bold">4. Verify:</span> Anyone can verify decisions on <a href="https://scan.testnet.initia.xyz/address/0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc" target="_blank" rel="noreferrer" className="underline" style={{ color: blue }}>Initia Explorer</a>.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div id="contract-details" className="space-y-10">
+                <h3 style={{ color: blue }} className="text-xl font-bold uppercase tracking-widest italic">Contract Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 border border-zinc-900 bg-zinc-950/20">
+                    <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-3" style={{ color: blue }}>Network</h4>
+                    <p className="text-zinc-400 text-[10px] uppercase tracking-tight">Initia MiniEVM Testnet (Chain ID: 17300)</p>
+                  </div>
+                  <div className="p-6 border border-zinc-900 bg-zinc-950/20">
+                    <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-3" style={{ color: blue }}>Contract Address</h4>
+                    <p className="text-zinc-400 text-[10px] font-mono break-all">0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc</p>
+                  </div>
+                  <div className="p-6 border border-zinc-900 bg-zinc-950/20">
+                    <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-3" style={{ color: blue }}>RPC Endpoint</h4>
+                    <p className="text-zinc-400 text-[10px] font-mono break-all">https://jsonrpc-evm-1.anvil.asia-southeast.initia.xyz</p>
+                  </div>
+                  <div className="p-6 border border-zinc-900 bg-zinc-950/20">
+                    <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-3" style={{ color: blue }}>Wallet Integration</h4>
+                    <p className="text-zinc-400 text-[10px] uppercase tracking-tight">InterwovenKit (@initia/interwovenkit-react) with TESTNET preset</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-white font-bold uppercase tracking-widest text-xs">On-Chain Decision Schema</h4>
+                  <pre className="bg-[#050a12] border border-[#1a2b3b] p-8 text-zinc-300 text-sm font-mono leading-7 overflow-x-auto shadow-2xl">
+{`struct Decision {
+    uint64  id;          // Auto-incrementing ID
+    address agent;       // Authorized agent address
+    string  symbol;      // "BTC", "ETH", etc.
+    string  action;      // "LONG", "SHORT", "HOLD", "EXIT"
+    uint64  price;       // Mark price × 1e6
+    uint64  pnlUsdc;     // |PnL| × 1e6
+    bool    pnlIsNeg;    // true if loss
+    uint8   confidence;  // 0–100
+    uint64  rsi5m;       // RSI × 100
+    uint64  rsi1h;       // RSI × 100
+    string  reasoning;   // Plain-English from Gemini
+    bool    dryRun;      // true = paper trade
+    uint64  timestamp;   // Unix timestamp
+}`}
+                  </pre>
+                </div>
+              </div>
+            </section>
+
+            {/* 03. Deployment Options */}
             <section id="option1-hybrid">
               <div className="flex items-center gap-6 mb-12">
-                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">02. Deployment Options</h2>
+                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">03. Deployment Options</h2>
                 <div className="h-px flex-1 bg-zinc-800" />
               </div>
 
@@ -191,6 +268,10 @@ PACIFICA_AGENT_API_KEY=<agent_api_key>
 GEMINI_API_KEY=<gemini_key>
 ELFA_API_KEY=<elfa_key>
 
+INITIA_RPC_URL=https://jsonrpc-evm-1.anvil.asia-southeast.initia.xyz
+INITIA_CONTRACT_ADDRESS=0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc
+INITIA_PRIVATE_KEY=<your_initia_evm_private_key>
+
 DRY_RUN=true
 TRADE_SYMBOLS=BTC,ETH
 LOOP_INTERVAL_SECONDS=300`}
@@ -239,7 +320,7 @@ AGENT_API_SECRET=<secure_random_string>`}
 
                 <div className="space-y-6">
                   {[
-                    { step: "1", text: "Clone repo: git clone https://github.com/MayurK-cmd/Pacificia-Trading-Bot.git" },
+                    { step: "1", text: "Clone repo: git clone https://github.com/MayurK-cmd/pacifica-pilot-initia.git" },
                     { step: "2", text: "Backend: cd backend && npm install && npm start" },
                     { step: "3", text: "Frontend: cd frontend && npm install && npm run dev" },
                     { step: "4", text: "Agent: cd agent && pip install -r requirements.txt && python main.py" },
@@ -274,6 +355,10 @@ PACIFICA_AGENT_API_KEY=<agent_api_key>
 GEMINI_API_KEY=<gemini_key>
 ELFA_API_KEY=<elfa_key>
 
+INITIA_RPC_URL=https://jsonrpc-evm-1.anvil.asia-southeast.initia.xyz
+INITIA_CONTRACT_ADDRESS=0x04F5F16f301Caf4C822Fd087aeD8dE43c17720dc
+INITIA_PRIVATE_KEY=<your_initia_evm_private_key>
+
 DRY_RUN=true
 TRADE_SYMBOLS=BTC,ETH
 LOOP_INTERVAL_SECONDS=300`}
@@ -285,7 +370,7 @@ LOOP_INTERVAL_SECONDS=300`}
             {/* 03. Trading Modes */}
             <section id="risk-profiles">
               <div className="flex items-center gap-6 mb-12">
-                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">03. Trading Modes</h2>
+                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">04. Trading Modes</h2>
                 <div className="h-px flex-1 bg-zinc-800" />
               </div>
 
@@ -387,7 +472,7 @@ LOOP_INTERVAL_SECONDS=300`}
             {/* 04. Signal Mechanics */}
             <section id="signal-mechanics">
               <div className="flex items-center gap-6 mb-12">
-                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">04. Signal Mechanics</h2>
+                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">05. Signal Mechanics</h2>
                 <div className="h-px flex-1 bg-zinc-800" />
               </div>
 
@@ -437,7 +522,7 @@ LOOP_INTERVAL_SECONDS=300`}
             {/* 05. FAQ & Troubleshooting */}
             <section id="faq">
               <div className="flex items-center gap-6 mb-12">
-                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">05. Help</h2>
+                <h2 className="text-white text-4xl font-black tracking-tight uppercase italic">06. Help</h2>
                 <div className="h-px flex-1 bg-zinc-800" />
               </div>
 
@@ -452,7 +537,7 @@ LOOP_INTERVAL_SECONDS=300`}
                     },
                     {
                       q: "Is my private key stored anywhere?",
-                      a: "No. Keys are AES-256 encrypted in MongoDB. Agent holds keys only in memory during execution."
+                      a: "No. Keys are AES-256 encrypted in MongoDB. Agent holds keys only in memory during execution. On-chain logs on Initia are public but contain no private data."
                     },
                     {
                       q: "Can I run multiple symbols?",
@@ -468,7 +553,11 @@ LOOP_INTERVAL_SECONDS=300`}
                     },
                     {
                       q: "Can I use this on mainnet?",
-                      a: "Yes. Switch PACIFICA_BASE_URL to mainnet and set DRY_RUN=false. Be cautious."
+                      a: "Yes. Switch PACIFICA_BASE_URL to mainnet, update INITIA_RPC_URL and INITIA_CONTRACT_ADDRESS, and set DRY_RUN=false. Be cautious."
+                    },
+                    {
+                      q: "How does Initia on-chain logging work?",
+                      a: "The agent calls logDecision() on the TradeLogger contract (Initia MiniEVM) after every cycle. The frontend reads decisions directly from the contract using viem — fully decentralized."
                     }
                   ].map((item, i) => (
                     <div key={i} className="p-6 bg-zinc-950/20 border border-zinc-900">
@@ -524,7 +613,7 @@ LOOP_INTERVAL_SECONDS=300`}
           <footer className="border-t border-[#1a2b3b] bg-black px-12 py-12 flex flex-col md:flex-row justify-between items-center gap-12 text-[12px] font-mono uppercase tracking-[0.3em] text-zinc-500 mt-20">
             <div className="flex flex-col md:flex-row gap-12">
               <span className="cursor-default italic text-zinc-700">© 2026_PILOT_CORE</span>
-              <a href="https://github.com/MayurK-cmd/Pacificia-Trading-Bot" target="_blank" rel="noreferrer" className="underline underline-offset-8 decoration-zinc-800 hover:text-white transition-colors font-bold">Github_Source</a>
+              <a href="https://github.com/MayurK-cmd/pacifica-pilot-initia" target="_blank" rel="noreferrer" className="underline underline-offset-8 decoration-zinc-800 hover:text-white transition-colors font-bold">Github_Source</a>
               <button className="hover:text-white transition-colors text-zinc-600">Protocol_Status: {systemTime}</button>
             </div>
             <div className="flex gap-10 items-center">
